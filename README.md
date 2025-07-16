@@ -1,24 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EduNotes 📚
 
-## Getting Started
+A modern web application for students to share and manage study notes collaboratively.
 
-First, run the development server:
+## 🚀 Tech Stack
+
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS + Material-UI (MUI) + shadcn/ui
+- **HTTP Client**: Axios
+- **Development**: ESLint, Prettier
+
+## 🛠️ Getting Started
+
+First, install dependencies:
+
+```bash
+npm install
+```
+
+Then, run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📁 Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+src/
+├── app/              # Next.js App Router pages
+├── components/       # Reusable components
+├── lib/             # Utilities and configurations
+├── types/           # TypeScript type definitions
+└── ...
+```
+
+## 🎨 Styling Guide
+
+- **MUI**: Use for complex components (DataGrid, DatePicker, Autocomplete)
+- **shadcn/ui**: Use for clean, customizable components (Button, Dialog, Form)
+- **Tailwind CSS**: Use for quick styling, spacing, and responsive design
 
 ## Learn More
 
