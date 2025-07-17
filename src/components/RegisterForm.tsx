@@ -80,6 +80,7 @@ export default function RegisterForm({
           )}
 
           <TextField
+            sx={{ mb: 2 }}
             {...register("email")}
             label="Email"
             type="email"
@@ -91,6 +92,7 @@ export default function RegisterForm({
           />
 
           <TextField
+            sx={{ mb: 2 }}
             {...register("username")}
             label="Username"
             fullWidth
@@ -122,6 +124,7 @@ export default function RegisterForm({
           </div>
 
           <TextField
+            sx={{ mb: 2 }}
             {...register("password")}
             label="Hasło"
             type="password"
@@ -133,6 +136,7 @@ export default function RegisterForm({
           />
 
           <TextField
+            sx={{ mb: 2 }}
             {...register("confirmPassword")}
             label="Potwierdź hasło"
             type="password"

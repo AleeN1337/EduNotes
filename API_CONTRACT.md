@@ -28,16 +28,19 @@
 - 🔸 Wybór JWT vs sessions
 - 🔸 Format odpowiedzi API
 
-### 2025-07-16 - Strona logowania/rejestracji
+### 2025-07-16 - Strona logowania/rejestracji ✅ COMPLETED
 
-**CO IMPLEMENTUJĘ (Frontend):**
+**CO ZAIMPLEMENTOWAŁEM (Frontend):**
 
 - ✅ Strona główna z formularzami login/register
 - ✅ React Hook Form + Zod validation
 - ✅ Material-UI komponenty (TextField, Button, Card)
-- ✅ Mock API dla testowania
-- ✅ localStorage dla tokenów
-- ✅ Responsive design z Tailwind
+- ✅ Mock API dla testowania (localStorage)
+- ✅ Inter font z Google Fonts
+- ✅ Responsive design z Tailwind + gradient styling
+- ✅ Smooth transitions między formularzami (Material-UI Fade)
+- ✅ **GitHub repo**: https://github.com/AleeN1337/EduNotes
+- ✅ **Gałąź**: `feature/auth-implementation`
 
 **CO POTRZEBUJE (Backend):**
 
@@ -69,15 +72,11 @@
 
 ### Token Type
 
-- [ ] **JWT** (JSON Web Tokens)
-- [ ] **Session-based** (cookies)
-- [ ] **Inne**: **\*\***\_\_\_\_**\*\***
+- [ ] **JWT** JSON Web Tokens
 
 ### Token Storage (Frontend)
 
 - [ ] **localStorage**
-- [ ] **httpOnly cookies**
-- [ ] **sessionStorage**
 
 ### Authorization Header Format
 
