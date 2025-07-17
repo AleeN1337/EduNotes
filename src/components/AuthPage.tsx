@@ -1,29 +1,54 @@
 "use client";
 
 import { useState } from "react";
-import { Container, Box, Fade, Button, Card } from "@mui/material";
+import {
+  Container,
+  Box,
+  Fade,
+  Button,
+  Card,
+  CircularProgress,
+} from "@mui/material";
 import { motion, AnimatePresence } from "framer-motion";
 import LoginForm from "@/components/LoginForm";
 import RegisterForm from "@/components/RegisterForm";
-import { Login } from "@mui/icons-material";
+import { set } from "zod";
+import { on } from "events";
 
 type AuthMode = "login" | "register";
 
 export default function AuthPage() {
   const [mode, setMode] = useState<AuthMode>("login");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleAuthSuccess = () => {
+    setIsLoading(true);
+  };
 
   return (
     // Main container with responsive design
     <div className="min-h-screen bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center p-4">
       <Container maxWidth="md">
-        <Box className="text-center">
+        <Box className=" text-center  ">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6 }}
+            animate={{
+              opacity: 1,
+              scale: 1,
+              rotateX: isLoading ? 90 : 0,
+            }}
+            transition={{
+              opacity: { duration: 0.6 },
+              scale: { duration: 0.6 },
+              rotateX: { duration: 0.8, ease: "easeInOut" },
+            }}
+            style={{
+              transformStyle: "preserve-3d",
+              transformOrigin: "center bottom",
+            }}
           >
             <div className="w-full">
-              <h1 className=" text-5xl font-black text-transparent bg-gradient-to-br from-blue-600 to-purple-600 bg-clip-text mb-5">
+              <h1 className=" text-5xl font-semibold text-transparent bg-gradient-to-br from-gray-900 to-gray-600 bg-clip-text">
                 EduNotes
               </h1>
               <p className="text-lg bg-gradient-to-br from-gray-600 to-blue-900 bg-clip-text text-transparent mt-4">
@@ -39,11 +64,11 @@ export default function AuthPage() {
                   transition={{ duration: 0.3 }}
                 ></motion.p>
               </AnimatePresence>
-              <Card className="mt-6 shadow-2xl overflow-hidden">
-                <div className="flex relative">
+              <Card className="mt-6 shadow-2xl ">
+                <motion.div className="flex relative overflow-hidden">
                   {/* Lewa kolumna - animowana */}
                   <motion.div
-                    className="w-1/2 bg-gradient-to-br from-blue-300 to-purple-400 text-white p-8 flex flex-col justify-center absolute top-0 left-0 min-h-full"
+                    className=" w-1/2 bg-gradient-to-br from-blue-300 to-purple-400 text-white p-8 flex flex-col justify-center absolute top-0 left-0 h-full z-10"
                     animate={{
                       x: mode === "login" ? 0 : "100%",
                     }}
@@ -62,7 +87,7 @@ export default function AuthPage() {
                         </h2>
                         <p className="text-lg opacity-80">
                           {mode === "login"
-                            ? "Zaloguj się do swojego konta"
+                            ? "Wprowadź swoje dane logowania"
                             : "Wypełnij formularz rejestracyjny"}
                         </p>
                       </motion.div>
@@ -71,7 +96,7 @@ export default function AuthPage() {
 
                   {/* Prawa kolumna - animowana */}
                   <motion.div
-                    className="w-1/2 bg-white p-8 flex flex-col justify-center absolute top-0 right-0 min-h-full"
+                    className="w-1/2 bg-white p-8 flex flex-col justify-center absolute top-0 right-0 h-full z-10"
                     animate={{
                       x: mode === "login" ? 0 : "-100%",
                     }}
@@ -87,16 +112,12 @@ export default function AuthPage() {
                       >
                         {mode === "login" ? (
                           <LoginForm
-                            onSuccess={() => {
-                              window.location.reload();
-                            }}
+                            onSuccess={handleAuthSuccess}
                             onSwitchToRegister={() => setMode("register")}
                           />
                         ) : (
                           <RegisterForm
-                            onSuccess={() => {
-                              window.location.reload();
-                            }}
+                            onSuccess={handleAuthSuccess}
                             onSwitchToLogin={() => setMode("login")}
                           />
                         )}
@@ -104,25 +125,80 @@ export default function AuthPage() {
                     </AnimatePresence>
                   </motion.div>
 
-                  {/* Spacer div to set height - niewidoczny, definiuje wysokość */}
-                  <div className="w-1/2 invisible p-8">
-                    {mode === "login" ? (
-                      <LoginForm
-                        onSuccess={() => {}}
-                        onSwitchToRegister={() => {}}
-                      />
-                    ) : (
-                      <RegisterForm
-                        onSuccess={() => {}}
-                        onSwitchToLogin={() => {}}
-                      />
-                    )}
+                  {/* Spacer div - definiuje wysokość kontenera */}
+                  <div className="w-full flex">
+                    <div className="w-1/2 p-8">
+                      <div className="invisible">
+                        <h2 className="text-3xl font-bold mb-4">Placeholder</h2>
+                        <p className="text-lg mb-6">Placeholder text</p>
+                      </div>
+                    </div>
+                    <div className="w-1/2 p-8">
+                      {mode === "login" ? (
+                        <LoginForm
+                          onSuccess={() => {}}
+                          onSwitchToRegister={() => {}}
+                        />
+                      ) : (
+                        <RegisterForm
+                          onSuccess={() => {}}
+                          onSwitchToLogin={() => {}}
+                        />
+                      )}
+                    </div>
                   </div>
-                </div>
+                </motion.div>
               </Card>
             </div>
           </motion.div>
         </Box>
+
+        {/* Ekran ładowania - pojawia się nad całym ekranem */}
+        <AnimatePresence>
+          {isLoading && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8, y: 50 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 50 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="fixed inset-0 bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center z-50"
+              style={{
+                backdropFilter: "blur(10px)",
+              }}
+            >
+              <div className="text-center">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.5, delay: 0.6 }}
+                >
+                  <CircularProgress
+                    size={80}
+                    thickness={4}
+                    className="mb-6"
+                    sx={{ color: "#22c55e" }}
+                  />
+                </motion.div>
+                <motion.p
+                  className="text-lg text-gray-700 font-medium"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.8 }}
+                >
+                  Logowanie...
+                </motion.p>
+                <motion.p
+                  className="text-sm text-gray-500 mt-2"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 1.0 }}
+                >
+                  Proszę czekać
+                </motion.p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </Container>
     </div>
   );
