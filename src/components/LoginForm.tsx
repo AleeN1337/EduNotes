@@ -16,7 +16,7 @@ import {
 } from "@mui/material";
 import { Login as LoginIcon } from "@mui/icons-material";
 import { loginSchema, LoginFormData } from "@/lib/validationSchemas";
-import { MockAuthAPI } from "@/lib/mockApi";
+import { AuthAPI } from "@/lib/authApi";
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -43,9 +43,10 @@ export default function LoginForm({
       setIsLoading(true);
       setError("");
 
-      const response = await MockAuthAPI.login({ ...data, rememberMe: false });
-
-      if (response.success) {
+      // Wywołanie API
+      const result = await AuthAPI.login(data);
+      
+      if (result) {
         onSuccess?.();
       }
     } catch (err) {

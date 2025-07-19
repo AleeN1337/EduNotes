@@ -54,7 +54,6 @@ export interface PaginatedResponse<T> {
 export interface LoginForm {
   email: string;
   password: string;
-  rememberMe: boolean;
 }
 
 export interface RegisterForm {
@@ -63,7 +62,6 @@ export interface RegisterForm {
   firstName: string;
   lastName: string;
   password: string;
-  confirmPassword: string;
 }
 
 export interface NoteForm {

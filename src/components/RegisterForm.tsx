@@ -16,7 +16,7 @@ import {
 } from "@mui/material";
 import { PersonAdd as RegisterIcon } from "@mui/icons-material";
 import { registerSchema, RegisterFormData } from "@/lib/validationSchemas";
-import { MockAuthAPI } from "@/lib/mockApi";
+import { AuthAPI } from "@/lib/authApi";
 
 interface RegisterFormProps {
   onSuccess?: () => void;
@@ -43,9 +43,19 @@ export default function RegisterForm({
       setIsLoading(true);
       setError("");
 
-      const response = await MockAuthAPI.register(data);
+      // Konwersja danych formularza na format API
+      const registerData = {
+        email: data.email,
+        username: data.username,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        password: data.password,
+      };
 
-      if (response.success) {
+      // Wywołanie API
+      const result = await AuthAPI.register(registerData);
+      
+      if (result) {
         onSuccess?.();
       }
     } catch (err) {

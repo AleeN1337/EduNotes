@@ -12,17 +12,21 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import LoginForm from "@/components/LoginForm";
 import RegisterForm from "@/components/RegisterForm";
-import { set } from "zod";
-import { on } from "events";
+import { useRouter } from "next/navigation";
 
 type AuthMode = "login" | "register";
 
 export default function AuthPage() {
   const [mode, setMode] = useState<AuthMode>("login");
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   const handleAuthSuccess = () => {
     setIsLoading(true);
+    // Po krótkim opóźnieniu przekieruj do dashboard
+    setTimeout(() => {
+      router.push("/dashboard");
+    }, 2000);
   };
 
   return (
