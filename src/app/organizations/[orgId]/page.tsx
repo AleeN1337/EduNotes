@@ -48,6 +48,9 @@ export default function OrganizationPage() {
   const { orgId } = useParams() as { orgId: string };
   const router = useRouter();
 
+  // State for organization info
+  const [organizationName, setOrganizationName] = useState<string>("");
+
   const [channels, setChannels] = useState<Channel[]>([]);
   const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
   const [topics, setTopics] = useState<Topic[]>([]);
@@ -56,6 +59,21 @@ export default function OrganizationPage() {
   const [newChannelName, setNewChannelName] = useState("");
   const [newTopicName, setNewTopicName] = useState("");
   const [newMessage, setNewMessage] = useState("");
+
+  // Load organization info
+  useEffect(() => {
+    if (orgId) {
+      api
+        .get(`/organizations/${orgId}`)
+        .then((res) => {
+          setOrganizationName(res.data.organization_name || `Organizacja ${orgId}`);
+        })
+        .catch((error) => {
+          console.error("Error loading organization:", error);
+          setOrganizationName(`Organizacja ${orgId}`);
+        });
+    }
+  }, [orgId]);
 
   // Load channels (subjects) for organization
   useEffect(() => {
@@ -282,7 +300,7 @@ export default function OrganizationPage() {
               fontSize: { xs: "1.1rem", sm: "1.25rem" },
             }}
           >
-            📚 EduNotes - Organizacja: {orgId}
+            🏢 {organizationName || `Organizacja ${orgId}`}
           </Typography>
         </Toolbar>
       </AppBar>
@@ -306,7 +324,7 @@ export default function OrganizationPage() {
               fontSize: { xs: "1.75rem", sm: "2rem", md: "2.25rem" },
             }}
           >
-            🏢 Organizacja: {orgId}
+            🏢 {organizationName || `Organizacja ${orgId}`}
           </Typography>
           <Typography
             variant="body1"

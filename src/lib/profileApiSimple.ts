@@ -89,21 +89,55 @@ export class ProfileAPI {
       // Dla membership endpointu organization_users/me mapujemy wpisy na organizacje
       let orgs: UserOrganization[] = [];
       if (Array.isArray(data)) {
-        orgs = data.map((item: any) => ({
-          id: item.organization?.id || item.organization_id,
-          organization_name:
-            item.organization?.organization_name || item.organization_name,
-          role: item.role,
-          joined_at: item.joined_at,
-        }));
+        // Pobierz pełne dane organizacji dla każdego membership
+        const orgPromises = data.map(async (item: any) => {
+          console.log("ProfileAPI: Mapping organization item:", item);
+          
+          const orgId = item.organization?.id || item.organization_id;
+          let organizationName = item.organization?.organization_name || item.organization_name;
+          
+          // Jeśli nie mamy nazwy organizacji, pobierz ją z API
+          if (!organizationName && orgId) {
+            try {
+              const orgResponse = await fetch(`/api/backend/organizations/${orgId}`, {
+                method: "GET",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+              });
+              
+              if (orgResponse.ok) {
+                const orgData = await orgResponse.json();
+                organizationName = orgData.organization_name;
+                console.log(`ProfileAPI: Fetched organization name for ${orgId}:`, organizationName);
+              }
+            } catch (error) {
+              console.warn(`ProfileAPI: Could not fetch organization ${orgId} details:`, error);
+            }
+          }
+          
+          return {
+            id: orgId,
+            organization_name: organizationName || `Organizacja ${orgId}`,
+            role: item.role,
+            joined_at: item.joined_at,
+          };
+        });
+        
+        orgs = await Promise.all(orgPromises);
       } else if (Array.isArray(data.organizations)) {
-        orgs = data.organizations.map((org: any) => ({
-          id: org.id,
-          organization_name: org.organization_name,
-          role: org.role,
-          joined_at: org.joined_at,
-        }));
+        orgs = data.organizations.map((org: any) => {
+          console.log("ProfileAPI: Mapping organization:", org);
+          return {
+            id: org.id,
+            organization_name: org.organization_name || `Organizacja ${org.id}`,
+            role: org.role,
+            joined_at: org.joined_at,
+          };
+        });
       }
+      console.log("ProfileAPI: Final mapped organizations:", orgs);
       return {
         success: true,
         data: orgs,

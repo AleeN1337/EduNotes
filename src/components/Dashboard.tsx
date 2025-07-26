@@ -153,7 +153,7 @@ export default function Dashboard() {
         const organizationsResponse = await ProfileAPI.getUserOrganizations();
         if (organizationsResponse.success) {
           setUserOrganizations(organizationsResponse.data);
-          console.log("Dashboard: Organizations data loaded successfully");
+          console.log("Dashboard: Organizations data loaded successfully:", organizationsResponse.data);
         }
       } catch (error) {
         console.warn("Dashboard: Organizations data not available:", error);
