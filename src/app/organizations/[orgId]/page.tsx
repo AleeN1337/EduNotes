@@ -96,6 +96,19 @@ export default function OrganizationPage() {
   const [deletingChannel, setDeletingChannel] = useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = useState<string>("");
   const [pendingInvites, setPendingInvites] = useState<Invite[]>([]);
+  const [userColors, setUserColors] = useState<Record<string, string>>({});
+
+  // Define a set of distinct pastel colors for users
+  const colorOptions = [
+    "#FFCDD2", // red lighten
+    "#C8E6C9", // green lighten
+    "#BBDEFB", // blue lighten
+    "#FFF9C4", // yellow lighten
+    "#D1C4E9", // purple lighten
+    "#FFE0B2", // orange lighten
+    "#F0F4C3", // lime lighten
+    "#B2EBF2", // cyan lighten
+  ];
 
   // Load organization info
   useEffect(() => {
@@ -340,12 +353,13 @@ export default function OrganizationPage() {
       setMessages([]);
     }
   }, [selectedTopic]);
-  
+
   // Poll messages every 5 seconds for real-time updates
   useEffect(() => {
     if (!selectedTopic) return;
     const interval = setInterval(() => {
-      api.get(`/notes/notes_in_topic?topic_id=${selectedTopic}`)
+      api
+        .get(`/notes/notes_in_topic?topic_id=${selectedTopic}`)
         .then((res) => {
           const raw = Array.isArray(res.data) ? res.data : res.data.data ?? [];
           const normalized = (raw as any[]).map((m: any) => ({
@@ -733,6 +747,23 @@ export default function OrganizationPage() {
     }
   };
 
+  // Assign colors to users based on message sender
+  useEffect(() => {
+    // Assign a unique color to each user encountered in messages
+    let updated = false;
+    const updatedColors = { ...userColors };
+    messages.forEach((msg) => {
+      if (!updatedColors[msg.user_id]) {
+        const idx = Object.keys(updatedColors).length % colorOptions.length;
+        updatedColors[msg.user_id] = colorOptions[idx];
+        updated = true;
+      }
+    });
+    if (updated) {
+      setUserColors(updatedColors);
+    }
+  }, [messages]);
+
   return (
     <div>
       <AppBar
@@ -906,6 +937,7 @@ export default function OrganizationPage() {
                       sx={{
                         width: "100%",
                         display: "flex",
+                        justifyContent: isOwn ? "flex-start" : "flex-end",
                         alignItems: "center",
                         mb: 2,
                       }}
@@ -913,13 +945,13 @@ export default function OrganizationPage() {
                       {/* Bubble alignment using margins */}
                       <Box
                         sx={{
-                          ml: isOwn ? "auto" : 0,
-                          mr: isOwn ? 0 : "auto",
+                          ml: isOwn ? 0 : "auto",
+                          mr: isOwn ? "auto" : 0,
                           p: 2,
                           maxWidth: "80%",
                           width: "auto",
-                          backgroundColor: isOwn ? "primary.light" : "grey.200",
-                          color: isOwn ? "white" : "text.primary",
+                          backgroundColor: userColors[msg.user_id] ?? "grey.200",
+                          color: "text.primary",
                           borderRadius: 2,
                           whiteSpace: "pre-wrap",
                           wordBreak: "break-word",
@@ -940,7 +972,13 @@ export default function OrganizationPage() {
                         <IconButton
                           size="small"
                           onClick={() => handleDeleteMessage(msg.id)}
-                          sx={{ ml: 1, "&:hover": { backgroundColor: "error.light", color: "white" } }}
+                          sx={{
+                            ml: 1,
+                            "&:hover": {
+                              backgroundColor: "error.light",
+                              color: "white",
+                            },
+                          }}
                         >
                           <DeleteIcon fontSize="small" />
                         </IconButton>
