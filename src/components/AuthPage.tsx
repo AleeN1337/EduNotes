@@ -22,10 +22,10 @@ export default function AuthPage() {
   const router = useRouter();
 
   const handleAuthSuccess = () => {
+    console.log("AuthPage: Handling auth success, redirecting to dashboard...");
     setIsLoading(true);
-    setTimeout(() => {
-      router.push("/dashboard");
-    }, 2000);
+    // Natychmiastowe przekierowanie zamiast opóźnienia
+    router.push("/dashboard");
   };
 
   return (

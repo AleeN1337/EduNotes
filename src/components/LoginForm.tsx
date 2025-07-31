@@ -50,10 +50,13 @@ export default function LoginForm({
 
       if (result && result.success !== false) {
         console.log("Login successful, calling onSuccess");
-        onSuccess?.();
+        // Krótkie opóźnienie dla lepszego UX
+        setTimeout(() => {
+          onSuccess?.();
+        }, 500);
       } else {
         console.log("Login failed - no valid result");
-        setError("Logowanie nie powiodło się");
+        setError(result?.message || "Logowanie nie powiodło się");
       }
     } catch (err) {
       console.log("Login error:", err);

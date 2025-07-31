@@ -49,9 +49,14 @@ api.interceptors.response.use(
       // Niektóre 404 są oczekiwane i nie powinny być logowane jako błędy
       const expected404Endpoints = [
         "/organization_users/me", // Użytkownik może nie być członkiem żadnej organizacji
-        "/channels/channels_in_orgazation", // Organizacja może nie mieć kanałów
+        "/channels/channels_in_organization", // Organizacja może nie mieć kanałów
         "/topics/topics_in_channel", // Kanał może nie mieć tematów
+        "/notes/notes_in_topic", // Temat może nie mieć notatek
         "/organizations/", // Organizacja może nie istnieć
+        "/notes/my", // Użytkownik może nie mieć notatek
+        "/deadlines/my_deadlines", // Użytkownik może nie mieć terminów
+        "/auth/me", // Może nie być zaimplementowane w backend
+        "/organization-invitations/sent", // Sent invites may not be implemented
       ];
 
       if (expected404Endpoints.some((endpoint) => url?.includes(endpoint))) {

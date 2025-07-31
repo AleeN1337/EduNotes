@@ -10,6 +10,7 @@ import {
   CardContent,
   CardActions,
   List,
+  ListItem,
   ListItemText,
   ListItemIcon,
   Button,
@@ -54,6 +55,13 @@ interface Message {
   content: string;
   created_at: string;
   image_url?: string;
+  user_id: string;
+}
+interface Invite {
+  id: string;
+  email: string;
+  status: string;
+  invited_at: string;
 }
 
 export default function OrganizationPage() {
@@ -74,6 +82,9 @@ export default function OrganizationPage() {
   const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserName, setCurrentUserName] = useState<string>("");
+  const [userNames, setUserNames] = useState<Record<string, string>>({});
   const [newChannelName, setNewChannelName] = useState("");
   const [newTopicName, setNewTopicName] = useState("");
   const [newMessage, setNewMessage] = useState("");
@@ -83,6 +94,8 @@ export default function OrganizationPage() {
     string | null
   >(null);
   const [deletingChannel, setDeletingChannel] = useState<string | null>(null);
+  const [inviteEmail, setInviteEmail] = useState<string>("");
+  const [pendingInvites, setPendingInvites] = useState<Invite[]>([]);
 
   // Load organization info
   useEffect(() => {
@@ -90,8 +103,10 @@ export default function OrganizationPage() {
       api
         .get(`/organizations/${orgId}`)
         .then((res) => {
+          // Unwrap wrapper if present
+          const orgData = res.data.data ?? res.data;
           setOrganizationName(
-            res.data.organization_name || `Organizacja ${orgId}`
+            orgData.organization_name || `Organizacja ${orgId}`
           );
         })
         .catch((error) => {
@@ -104,9 +119,11 @@ export default function OrganizationPage() {
   // Load channels (subjects) for organization
   useEffect(() => {
     api
-      .get(`/channels/channels_in_orgazation?organization_id=${orgId}`)
+      .get(`/channels/channels_in_organization?organization_id=${orgId}`)
       .then((res) => {
-        const normalizedChannels = res.data.map((c: any) => ({
+        // Unwrap wrapper if present
+        const raw = Array.isArray(res.data) ? res.data : res.data.data ?? [];
+        const normalizedChannels = (raw as any[]).map((c: any) => ({
           ...c,
           id: String(c.id ?? c.channel_id),
         }));
@@ -114,9 +131,8 @@ export default function OrganizationPage() {
 
         // Load topics for each channel
         normalizedChannels.forEach((channel: Channel) => {
-          const channelId = channel.id;
-          if (channelId && channelId !== "undefined") {
-            loadTopicsForChannel(channelId);
+          if (channel.id && channel.id !== "undefined") {
+            loadTopicsForChannel(channel.id);
           }
         });
       })
@@ -148,7 +164,9 @@ export default function OrganizationPage() {
       const res = await api.get(
         `/topics/topics_in_channel?channel_id=${channelId}`
       );
-      const normalizedTopics: Topic[] = res.data.map((t: any) => ({
+      // Unwrap wrapper if present
+      const raw = Array.isArray(res.data) ? res.data : res.data.data ?? [];
+      const normalizedTopics: Topic[] = (raw as any[]).map((t: any) => ({
         id: String(t.id ?? t.topic_id),
         topic_name: t.topic_name,
         channel_id: channelId,
@@ -182,13 +200,19 @@ export default function OrganizationPage() {
   // Function to get current topic name
   const getCurrentTopicName = () => {
     if (!selectedTopic) return null;
-    
+
     // Find the topic in channelTopics
     for (const topics of Object.values(channelTopics)) {
-      const topic = topics.find(t => t.id === selectedTopic);
+      const topic = topics.find((t) => t.id === selectedTopic);
       if (topic) return topic.topic_name;
     }
-    return 'Nieznany temat';
+    return "Nieznany temat";
+  };
+  // Function to get current channel name
+  const getCurrentChannelName = () => {
+    if (!selectedChannel) return null;
+    const channel = channels.find((c) => c.id === selectedChannel);
+    return channel ? channel.channel_name : null;
   };
 
   // Handle selecting topics and channels
@@ -291,7 +315,19 @@ export default function OrganizationPage() {
     if (selectedTopic) {
       api
         .get(`/notes/notes_in_topic?topic_id=${selectedTopic}`)
-        .then((res) => setMessages(res.data))
+        .then((res) => {
+          // Unwrap wrapper if present
+          const raw = Array.isArray(res.data) ? res.data : res.data.data ?? [];
+          // Normalize notes into Message shape
+          const normalized = (raw as any[]).map((m: any) => ({
+            id: String(m.note_id ?? m.id),
+            content: m.content,
+            created_at: m.created_at,
+            image_url: m.image_url,
+            user_id: String(m.user_id),
+          }));
+          setMessages(normalized);
+        })
         .catch((error) => {
           // If it's a 404, it likely means no messages in this topic - set empty array
           if (error.response?.status === 404) {
@@ -304,6 +340,33 @@ export default function OrganizationPage() {
       setMessages([]);
     }
   }, [selectedTopic]);
+  
+  // Poll messages every 5 seconds for real-time updates
+  useEffect(() => {
+    if (!selectedTopic) return;
+    const interval = setInterval(() => {
+      api.get(`/notes/notes_in_topic?topic_id=${selectedTopic}`)
+        .then((res) => {
+          const raw = Array.isArray(res.data) ? res.data : res.data.data ?? [];
+          const normalized = (raw as any[]).map((m: any) => ({
+            id: String(m.note_id ?? m.id),
+            content: m.content,
+            created_at: m.created_at,
+            image_url: m.image_url,
+            user_id: String(m.user_id),
+          }));
+          setMessages(normalized);
+        })
+        .catch((error) => {
+          if (error.response?.status === 404) {
+            setMessages([]);
+          } else {
+            console.error("Error polling messages:", error);
+          }
+        });
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [selectedTopic]);
 
   // Function to add a new channel (subject)
   const handleAddChannel = async () => {
@@ -314,14 +377,19 @@ export default function OrganizationPage() {
         channel_name: newChannelName.trim(),
         organization_id: Number(orgId),
       });
-      const newChannel = response.data;
+      // Unwrap created channel from response wrapper
+      const newChannel = response.data.data ?? response.data;
       setNewChannelName("");
 
-      // Reload channels list using correct endpoint
+      // Reload channels list
       const channelsResponse = await api.get(
-        `/channels/channels_in_orgazation?organization_id=${orgId}`
+        `/channels/channels_in_organization?organization_id=${orgId}`
       );
-      const updatedChannels = channelsResponse.data.map((c: any) => ({
+      // Unwrap list from possible wrapper
+      const rawChannels = Array.isArray(channelsResponse.data)
+        ? channelsResponse.data
+        : channelsResponse.data.data ?? [];
+      const updatedChannels = (rawChannels as any[]).map((c: any) => ({
         ...c,
         id: String(c.id ?? c.channel_id),
       }));
@@ -330,27 +398,23 @@ export default function OrganizationPage() {
       // Select the newly created channel
       setSelectedChannel(String(newChannel.id ?? newChannel.channel_id));
     } catch (error: any) {
-      console.error("Error adding channel:", error);
-
-      // Better error handling for duplicate names
-      if (error.response?.status === 400 || error.response?.status === 409) {
-        const errorDetail =
-          error.response?.data?.detail || error.response?.data?.message || "";
-        if (
-          errorDetail.toLowerCase().includes("duplicate") ||
-          errorDetail.toLowerCase().includes("already exists") ||
-          errorDetail.toLowerCase().includes("unique")
-        ) {
-          alert(
-            `Przedmiot o nazwie "${newChannelName.trim()}" już istnieje w systemie. Spróbuj innej nazwy.`
-          );
-        } else {
-          alert(`Błąd podczas tworzenia przedmiotu: ${errorDetail}`);
-        }
-      } else {
-        alert(
-          `Błąd podczas tworzenia przedmiotu. Status: ${error.response?.status}`
-        );
+      console.warn("Error adding channel (allowing duplicates):", error);
+      // Reload channels list even on error
+      const channelsResponse = await api.get(
+        `/channels/channels_in_organization?organization_id=${orgId}`
+      );
+      const rawChannels = Array.isArray(channelsResponse.data)
+        ? channelsResponse.data
+        : channelsResponse.data.data ?? [];
+      const updatedChannels = (rawChannels as any[]).map((c: any) => ({
+        ...c,
+        id: String(c.id ?? c.channel_id),
+      }));
+      setChannels(updatedChannels);
+      setNewChannelName("");
+      // Select the latest channel
+      if (updatedChannels.length > 0) {
+        setSelectedChannel(updatedChannels[updatedChannels.length - 1].id);
       }
     }
   };
@@ -360,95 +424,120 @@ export default function OrganizationPage() {
     if (!newTopicName.trim()) return;
 
     try {
+      // Create topic for this channel
       const resPost = await api.post("/topics/", {
         topic_name: newTopicName.trim(),
         channel_id: Number(channelId),
         organization_id: Number(orgId),
       });
-      const createdTopic = resPost.data;
-
+      // Unwrap created topic from response wrapper
+      const createdTopic = resPost.data.data ?? resPost.data;
       setNewTopicName("");
       setAddingTopicToChannel(null); // Close the form
 
-      // Reload topics for the specific channel in hierarchical view
-      loadTopicsForChannel(channelId);
-
-      // If this is the selected channel, auto-select the new topic
+      // Reload topics list for this channel
+      const topicsResponse = await api.get(
+        `/topics/topics_in_channel?channel_id=${channelId}`
+      );
+      // Unwrap list from possible wrapper
+      const rawTopics = Array.isArray(topicsResponse.data)
+        ? topicsResponse.data
+        : topicsResponse.data.data ?? [];
+      const normalizedTopics = rawTopics.map((t: any) => ({
+        ...t,
+        id: String(t.id ?? t.topic_id),
+        topic_name: t.topic_name,
+        channel_id: channelId,
+      }));
+      setChannelTopics((prev) => ({
+        ...prev,
+        [channelId]: normalizedTopics,
+      }));
+      // Select the newly created topic if in current channel
       if (channelId === selectedChannel) {
-        const topicId = createdTopic.id ?? (createdTopic as any).topic_id;
-        setSelectedTopic(String(topicId));
+        setSelectedTopic(String(createdTopic.id ?? createdTopic.topic_id));
       }
     } catch (error: any) {
-      console.error("Error adding topic to channel:", error);
-
-      // Better error handling for duplicate names
-      if (error.response?.status === 400 || error.response?.status === 409) {
-        const errorDetail =
-          error.response?.data?.detail || error.response?.data?.message || "";
-        if (
-          errorDetail.toLowerCase().includes("duplicate") ||
-          errorDetail.toLowerCase().includes("already exists") ||
-          errorDetail.toLowerCase().includes("unique")
-        ) {
-          alert(
-            `Temat o nazwie "${newTopicName.trim()}" już istnieje w systemie. Spróbuj innej nazwy.`
-          );
-        } else {
-          alert(`Błąd podczas tworzenia tematu: ${errorDetail}`);
-        }
-      } else {
-        alert(
-          `Błąd podczas tworzenia tematu. Status: ${error.response?.status}`
+      console.warn("Error adding topic (allowing duplicates):", error);
+      // Reload topics even on error to reflect any created topic
+      try {
+        const topicsResponse = await api.get(
+          `/topics/topics_in_channel?channel_id=${channelId}`
         );
+        const rawTopics = Array.isArray(topicsResponse.data)
+          ? topicsResponse.data
+          : topicsResponse.data.data ?? [];
+        const normalizedTopics = rawTopics.map((t: any) => ({
+          ...t,
+          id: String(t.id ?? t.topic_id),
+          topic_name: t.topic_name,
+          channel_id: channelId,
+        }));
+        setChannelTopics((prev) => ({
+          ...prev,
+          [channelId]: normalizedTopics,
+        }));
+        // Auto-select latest topic
+        if (normalizedTopics.length > 0) {
+          setSelectedTopic(normalizedTopics[normalizedTopics.length - 1].id);
+        }
+      } catch (reloadError) {
+        console.error("Error reloading topics after failed add:", reloadError);
       }
-
-      // Keep the form open so user can try again with different name
-      // Don't reset the form state here
     }
   };
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedTopic) return;
     try {
-      const messageData = {
-        title:
-          newMessage.trim().substring(0, 50) +
-          (newMessage.trim().length > 50 ? "..." : ""), // Create title from first 50 chars
-        content: newMessage.trim(),
-        topic_id: Number(selectedTopic),
-        organization_id: Number(orgId),
-        content_type: "text", // Default content type
-        image: null, // Add missing image field as null
-      };
+      // Prepare multipart/form-data for note creation
+      const formData = new FormData();
+      formData.append(
+        "title",
+        newMessage.trim().substring(0, 50) +
+          (newMessage.trim().length > 50 ? "..." : "")
+      );
+      formData.append("content", newMessage.trim());
+      formData.append("topic_id", selectedTopic);
+      formData.append("organization_id", orgId);
+      formData.append("content_type", "text");
+      if (selectedFile) {
+        formData.append("image", selectedFile);
+      }
+      console.log("Sending FormData note");
+      const response = await api.post("/notes/", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      // Unwrap created note
+      const createdNote = response.data.data ?? response.data;
+      console.log("Note created:", createdNote);
 
-      console.log("Sending message:", messageData);
-      console.log("Message data JSON:", JSON.stringify(messageData, null, 2));
-
-      // Use proxy instead of direct backend connection
-      const response = await api.post("/notes/", messageData);
-      console.log("Message sent successfully:", response.data);
-      
       setNewMessage("");
+      // Reload notes in topic
       const res = await api.get(
         `/notes/notes_in_topic?topic_id=${selectedTopic}`
       );
-      setMessages(res.data);
+      const rawMessages = Array.isArray(res.data)
+        ? res.data
+        : res.data.data ?? [];
+      setMessages(rawMessages as any[]);
     } catch (error: any) {
       console.error("Error sending message:", error);
-
       if (error.response?.status === 422) {
         const errorDetail = error.response?.data?.detail || [];
         console.error("422 Validation error details:", errorDetail);
-        
+
         // Log each validation error in detail
         errorDetail.forEach((err: any, index: number) => {
           console.error(`Validation error ${index + 1}:`, err);
-          console.error(`  - Location: ${err.loc?.join(' -> ')}`);
+          console.error(`  - Location: ${err.loc?.join(" -> ")}`);
           console.error(`  - Message: ${err.msg}`);
           console.error(`  - Type: ${err.type}`);
         });
-        
-        alert(`Błąd walidacji danych (422): ${JSON.stringify(errorDetail, null, 2)}`);
+
+        alert(
+          `Błąd walidacji danych (422): ${JSON.stringify(errorDetail, null, 2)}`
+        );
       } else {
         console.error("Error response:", error.response?.data);
         alert(`Błąd podczas wysyłania wiadomości: ${error.message}`);
@@ -485,7 +574,7 @@ export default function OrganizationPage() {
 
       // Reload channels
       const res = await api.get(
-        `/channels/channels_in_orgazation?organization_id=${orgId}`
+        `/channels/channels_in_organization?organization_id=${orgId}`
       );
       const normalizedChannels = res.data.map((c: any) => ({
         ...c,
@@ -518,19 +607,26 @@ export default function OrganizationPage() {
     if (!window.confirm("Czy na pewno chcesz usunąć temat?")) return;
     try {
       await api.delete(`/topics/${topicId}`);
-
-      // Reload topics for all channels to update the hierarchical view
-      channels.forEach((channel) => {
-        const channelId = String(channel.id ?? (channel as any).channel_id);
-        if (channelId && channelId !== "undefined") {
-          loadTopicsForChannel(channelId);
+      // Determine which channel contained this topic
+      const entry = Object.entries(channelTopics).find(([, topics]) =>
+        topics.some((t) => t.id === topicId)
+      );
+      const affectedChannelId = entry?.[0];
+      if (affectedChannelId) {
+        // Reload only that channel's topics
+        await loadTopicsForChannel(affectedChannelId);
+        // If deleted topic was selected, select first of remaining or clear
+        if (selectedTopic === topicId) {
+          const remaining = (channelTopics[affectedChannelId] || []).filter(
+            (t) => t.id !== topicId
+          );
+          if (remaining.length > 0) {
+            setSelectedTopic(remaining[0].id);
+          } else {
+            setSelectedTopic(null);
+            setMessages([]);
+          }
         }
-      });
-
-      // Reset selection if needed
-      if (selectedTopic === topicId) {
-        setSelectedTopic(null);
-        setMessages([]);
       }
     } catch (error) {
       console.error("Error deleting topic:", error);
@@ -547,10 +643,93 @@ export default function OrganizationPage() {
         const res = await api.get(
           `/notes/notes_in_topic?topic_id=${selectedTopic}`
         );
-        setMessages(res.data);
+        // Unwrap wrapper if present
+        const raw = Array.isArray(res.data) ? res.data : res.data.data ?? [];
+        // Normalize notes into Message shape
+        const normalized = (raw as any[]).map((m: any) => ({
+          id: String(m.note_id ?? m.id),
+          content: m.content,
+          created_at: m.created_at,
+          image_url: m.image_url,
+          user_id: String(m.user_id),
+        }));
+        setMessages(normalized);
       }
     } catch (error) {
       console.error("Error deleting message:", error);
+    }
+  };
+
+  // Get current user ID from localStorage
+  useEffect(() => {
+    const userJson = localStorage.getItem("user");
+    if (userJson) {
+      try {
+        const user = JSON.parse(userJson);
+        setCurrentUserId(user.id?.toString() || null);
+        setCurrentUserName(user.name || user.username || user.email || "");
+      } catch {
+        setCurrentUserId(null);
+      }
+    }
+  }, []);
+
+  // Load pending invitations
+  const loadPendingInvites = async () => {
+    try {
+      // Retrieve all sent invitations and filter for this organization
+      const res = await api.get(`/organization-invitations/sent`);
+      const raw = Array.isArray(res.data) ? res.data : res.data.data ?? [];
+      // Filter for current org and pending status, map invitation fields
+      const invites: Invite[] = (raw as any[])
+        .filter(
+          (i) => String(i.organization_id) === orgId && i.status === "pending"
+        )
+        .map((i) => ({
+          id: String(i.invitation_id),
+          email: i.email,
+          status: i.status,
+          invited_at: i.created_at,
+        }));
+      setPendingInvites(invites);
+    } catch (error: any) {
+      // If backend does not support sent invitations endpoint, treat as no invites
+      if (error.response?.status === 404) {
+        setPendingInvites([]);
+      } else {
+        console.error("Error loading pending invites:", error);
+      }
+    }
+  };
+  useEffect(() => {
+    loadPendingInvites();
+  }, [orgId]);
+
+  // Send invitation to user by email
+  const handleSendInvite = async () => {
+    if (!inviteEmail.trim()) return;
+    try {
+      // Use API contract endpoint with query parameters
+      await api.post(
+        `/organization-invitations/`,
+        {},
+        {
+          params: {
+            organization_id: Number(orgId),
+            email: inviteEmail.trim(),
+            role: "user",
+          },
+        }
+      );
+      setInviteEmail("");
+      loadPendingInvites();
+    } catch (error: any) {
+      console.error("Error sending invite:", error);
+      alert(
+        `Nie udało się wysłać zaproszenia: ${
+          error.response?.data?.message || error.message
+        }`
+      );
     }
   };
 
@@ -583,9 +762,7 @@ export default function OrganizationPage() {
               fontWeight: 700,
               fontSize: { xs: "1.1rem", sm: "1.25rem" },
             }}
-          >
-            🏢 {organizationName || `Organizacja ${orgId}`}
-          </Typography>
+          ></Typography>
         </Toolbar>
       </AppBar>
 
@@ -614,10 +791,53 @@ export default function OrganizationPage() {
             variant="body1"
             color="text.secondary"
             sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
-          >
-            Zarządzaj przedmiotami, tematami i prowadź dyskusje
-          </Typography>
+          ></Typography>
         </Box>
+
+        {/* Invitations Section */}
+        <Card
+          sx={{
+            mb: 4,
+            boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+            borderRadius: 3,
+          }}
+        >
+          <CardHeader
+            title={
+              <Typography variant="h6">Zaproszenia do organizacji</Typography>
+            }
+            sx={{ pb: 1 }}
+          />
+          <CardContent>
+            <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Adres email użytkownika"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && handleSendInvite()}
+              />
+              <Button variant="contained" onClick={() => handleSendInvite()}>
+                Wyślij zaproszenie
+              </Button>
+            </Box>
+            {pendingInvites.length > 0 && (
+              <List>
+                {pendingInvites.map((inv) => (
+                  <ListItem key={inv.id}>
+                    <ListItemText
+                      primary={inv.email}
+                      secondary={`Status: ${inv.status}, wysłane: ${new Date(
+                        inv.invited_at
+                      ).toLocaleDateString()}`}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            )}
+          </CardContent>
+        </Card>
 
         <Box
           sx={{
@@ -641,20 +861,22 @@ export default function OrganizationPage() {
               avatar={<ChatBubbleOutlineIcon sx={{ color: "primary.main" }} />}
               title={
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  💬 Czat {selectedTopic ? `- ${getCurrentTopicName()}` : '(wybierz temat)'}
+                  {selectedTopic
+                    ? ` ${getCurrentChannelName()} - ${getCurrentTopicName()}`
+                    : " Czat (wybierz temat)"}
                 </Typography>
               }
               sx={{ pb: 1 }}
             />
             <CardContent sx={{ height: 400, overflowY: "auto", pt: 1 }}>
               {!selectedTopic ? (
-                <Box 
-                  sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'center', 
-                    alignItems: 'center', 
-                    height: '100%',
-                    color: 'text.secondary'
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    height: "100%",
+                    color: "text.secondary",
                   }}
                 >
                   <Typography variant="body2">
@@ -662,13 +884,13 @@ export default function OrganizationPage() {
                   </Typography>
                 </Box>
               ) : messages.length === 0 ? (
-                <Box 
-                  sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'center', 
-                    alignItems: 'center', 
-                    height: '100%',
-                    color: 'text.secondary'
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    height: "100%",
+                    color: "text.secondary",
                   }}
                 >
                   <Typography variant="body2">
@@ -676,43 +898,56 @@ export default function OrganizationPage() {
                   </Typography>
                 </Box>
               ) : (
-                messages.map((msg) => (
-                  <Box
-                    key={msg.id}
-                    sx={{
-                      mb: 2,
-                      display: "flex",
-                      justifyContent: "space-between",
-                      p: 2,
-                      backgroundColor: "grey.50",
-                      borderRadius: 2,
-                      "&:hover": {
-                        backgroundColor: "grey.100",
-                      },
-                    }}
-                  >
-                    <Box>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                        {msg.content}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {new Date(msg.created_at).toLocaleTimeString()}
-                      </Typography>
-                    </Box>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDeleteMessage(msg.id)}
+                messages.map((msg) => {
+                  const isOwn = String(msg.user_id) === currentUserId;
+                  return (
+                    <Box
+                      key={msg.id}
                       sx={{
-                        "&:hover": {
-                          backgroundColor: "error.light",
-                          color: "white",
-                        },
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        mb: 2,
                       }}
                     >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
-                ))
+                      {/* Bubble alignment using margins */}
+                      <Box
+                        sx={{
+                          ml: isOwn ? "auto" : 0,
+                          mr: isOwn ? 0 : "auto",
+                          p: 2,
+                          maxWidth: "80%",
+                          width: "auto",
+                          backgroundColor: isOwn ? "primary.light" : "grey.200",
+                          color: isOwn ? "white" : "text.primary",
+                          borderRadius: 2,
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          {msg.content}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          color={isOwn ? "white" : "text.secondary"}
+                          sx={{ display: "block", mt: 0.5 }}
+                        >
+                          {new Date(msg.created_at).toLocaleTimeString()}
+                        </Typography>
+                      </Box>
+                      {isOwn && (
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDeleteMessage(msg.id)}
+                          sx={{ ml: 1, "&:hover": { backgroundColor: "error.light", color: "white" } }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      )}
+                    </Box>
+                  );
+                })
               )}
             </CardContent>
             <Divider />
@@ -760,10 +995,16 @@ export default function OrganizationPage() {
                 <TextField
                   fullWidth
                   size="small"
-                  placeholder={selectedTopic ? "Napisz wiadomość..." : "Wybierz temat aby pisać wiadomości"}
+                  placeholder={
+                    selectedTopic
+                      ? "Napisz wiadomość..."
+                      : "Wybierz temat aby pisać wiadomości"
+                  }
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && selectedTopic && handleSendMessage()}
+                  onKeyPress={(e) =>
+                    e.key === "Enter" && selectedTopic && handleSendMessage()
+                  }
                   disabled={!selectedTopic}
                 />
 
@@ -806,7 +1047,6 @@ export default function OrganizationPage() {
 
           {/* Sidebar */}
           <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            {/* Enhanced Subjects Card with Hierarchical View */}
             <Card
               sx={{
                 boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
@@ -818,7 +1058,7 @@ export default function OrganizationPage() {
                 avatar={<BookIcon sx={{ color: "secondary.main" }} />}
                 title={
                   <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                    📚 Przedmioty i Tematy
+                    Przedmioty i Tematy
                   </Typography>
                 }
                 sx={{ pb: 1 }}

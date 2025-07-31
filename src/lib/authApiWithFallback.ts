@@ -45,6 +45,9 @@ export class AuthAPI {
         if (result.token) {
           localStorage.setItem("auth_token", result.token);
           localStorage.setItem("user", JSON.stringify(result.user));
+
+          // Dodaj również do cookies dla middleware
+          document.cookie = `auth_token=${result.token}; path=/; max-age=86400; samesite=lax`;
         }
         return result;
       } else {
@@ -55,6 +58,9 @@ export class AuthAPI {
         if (mockUser) {
           localStorage.setItem("auth_token", MOCK_TOKEN);
           localStorage.setItem("user", JSON.stringify(mockUser));
+
+          // Dodaj również do cookies
+          document.cookie = `auth_token=${MOCK_TOKEN}; path=/; max-age=86400; samesite=lax`;
 
           return {
             success: true,
@@ -73,6 +79,9 @@ export class AuthAPI {
       if (mockUser) {
         localStorage.setItem("auth_token", MOCK_TOKEN);
         localStorage.setItem("user", JSON.stringify(mockUser));
+
+        // Dodaj również do cookies
+        document.cookie = `auth_token=${MOCK_TOKEN}; path=/; max-age=86400; samesite=lax`;
 
         return {
           success: true,
@@ -118,6 +127,9 @@ export class AuthAPI {
       localStorage.setItem("auth_token", MOCK_TOKEN);
       localStorage.setItem("user", JSON.stringify(newUser));
 
+      // Dodaj również do cookies
+      document.cookie = `auth_token=${MOCK_TOKEN}; path=/; max-age=86400; samesite=lax`;
+
       return {
         success: true,
         data: { ...newUser, token: MOCK_TOKEN },
@@ -131,6 +143,10 @@ export class AuthAPI {
   static async logout(): Promise<void> {
     localStorage.removeItem("auth_token");
     localStorage.removeItem("user");
+
+    // Usuń również z cookies
+    document.cookie =
+      "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
   }
 
   static async getCurrentUser(): Promise<User | null> {
@@ -142,7 +158,9 @@ export class AuthAPI {
       const userJson = localStorage.getItem("user");
       if (userJson) {
         try {
-          return JSON.parse(userJson);
+          const user = JSON.parse(userJson);
+          console.log("AuthAPI: Using stored user data:", user);
+          return user;
         } catch (parseError) {
           console.warn("Failed to parse user from localStorage:", parseError);
         }
@@ -150,37 +168,48 @@ export class AuthAPI {
 
       // Jeśli to mock token, nie próbuj API
       if (token === MOCK_TOKEN) {
+        console.log("AuthAPI: Mock token detected, no API call needed");
         return null;
       }
 
-      // Tylko dla prawdziwych tokenów spróbuj pobrać dane użytkownika
-      // Problem: API nie ma /auth/me, więc używamy stored user data
-      const storedUser = this.getStoredUser();
-      if (storedUser && storedUser.id) {
-        try {
-          // Próbujemy pobrać aktualne dane z API
-          console.log(
-            `AuthAPI: Trying to fetch user data for ID: ${storedUser.id}`
-          );
-          const response = await api.get(`/users/${storedUser.id}`);
-          console.log(
-            "AuthAPI: Successfully fetched user data from API:",
-            response.data
-          );
-          return response.data;
-        } catch (apiError: any) {
-          console.warn(
-            `AuthAPI: API /users/${storedUser.id} failed:`,
-            apiError
-          );
-          if (apiError.response?.status === 404) {
+      // Dla prawdziwych tokenów, spróbuj pobrać dane przez nasze API
+      try {
+        console.log("AuthAPI: Fetching user data from our API /auth/me");
+        const response = await fetch("/api/auth/me", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.user) {
             console.log(
-              "AuthAPI: User not found in API (404), using stored user data"
+              "AuthAPI: Successfully fetched user data from API:",
+              result.user
             );
+
+            // Zaktualizuj localStorage z najnowszymi danymi
+            localStorage.setItem("user", JSON.stringify(result.user));
+            return result.user;
           }
-          // Fallback - zwracamy stored user
-          return storedUser;
+        } else {
+          console.warn(
+            "AuthAPI: API /auth/me failed with status:",
+            response.status
+          );
         }
+      } catch (apiError: any) {
+        console.warn("AuthAPI: API /auth/me failed:", apiError);
+      }
+
+      // Fallback - sprawdź czy mamy podstawowe dane w localStorage
+      const storedUser = this.getStoredUser();
+      if (storedUser) {
+        console.log("AuthAPI: Fallback to stored user data");
+        return storedUser;
       }
 
       return null;

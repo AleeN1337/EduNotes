@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Container, Box, Typography } from "@mui/material";
+import {
+  Container,
+  Box,
+  Typography,
+  Button,
+  Card,
+  CardContent,
+} from "@mui/material";
 import { AuthAPI } from "@/lib/authApiWithFallback";
 import {
   ProfileAPI,
@@ -12,6 +19,7 @@ import {
 import { User } from "@/types";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
+
 import {
   DashboardHeader,
   ProfileDrawer,
@@ -25,6 +33,12 @@ import {
   NotificationSnackbar,
   type NotificationState,
 } from "./dashboard/";
+import {
+  List,
+  ListItem,
+  ListItemText,
+  ListItemSecondaryAction,
+} from "@mui/material";
 
 export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
@@ -56,6 +70,9 @@ export default function Dashboard() {
     severity: "success",
   });
 
+  // Stan dla zaproszeń
+  const [myInvites, setMyInvites] = useState<any[]>([]);
+
   const router = useRouter();
 
   // Funkcja do pokazywania powiadomień
@@ -86,14 +103,39 @@ export default function Dashboard() {
     const checkAuth = async () => {
       try {
         console.log("Dashboard: Sprawdzam autentyfikację...");
+
+        // Najpierw sprawdź czy mamy token
+        const token = localStorage.getItem("auth_token");
+        if (!token) {
+          console.log("Dashboard: Brak tokena, przekierowuję do logowania");
+          router.push("/");
+          return;
+        }
+
         const currentUser = await AuthAPI.getCurrentUser();
 
         if (currentUser) {
           console.log("Dashboard: Użytkownik zalogowany:", currentUser);
           setUser(currentUser);
         } else {
-          console.log("Dashboard: Brak zalogowanego użytkownika");
-          router.push("/");
+          console.log(
+            "Dashboard: Nie udało się pobrać danych użytkownika, ale token istnieje"
+          );
+          // Zamiast przekierowania, pokaż dashboard z ograniczonymi danymi
+          const fallbackUser = {
+            id: "temp",
+            email: "unknown@example.com",
+            username: "user",
+            firstName: "",
+            lastName: "",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+          setUser(fallbackUser);
+          showNotification(
+            "Dane użytkownika będą zaktualizowane wkrótce",
+            "info"
+          );
         }
       } catch (error) {
         console.error(
@@ -115,6 +157,30 @@ export default function Dashboard() {
       loadOrganizations();
     }
   }, [user, isClient]);
+
+  // Załaduj zaproszenia użytkownika
+  const loadMyInvites = async () => {
+    try {
+      const res = await api.get(`/organization-invitations/my`);
+      const raw = Array.isArray(res.data) ? res.data : res.data.data ?? [];
+      setMyInvites(
+        (raw as any[])
+          .filter((i) => i.status === "pending")
+          .map((i) => ({
+            id: i.invitation_id,
+            organization_id: i.organization_id,
+            email: i.email,
+            role: i.role,
+            created_at: i.created_at,
+          }))
+      );
+    } catch (err) {
+      console.error("Error loading my invitations:", err);
+    }
+  };
+  useEffect(() => {
+    if (isClient && user) loadMyInvites();
+  }, [isClient, user]);
 
   const handleLogout = async () => {
     try {
@@ -231,45 +297,41 @@ export default function Dashboard() {
     setCreatingOrg(true);
     try {
       console.log("Creating organization with name:", newOrgName.trim());
-
-      const backendData = {
-        organization_name: newOrgName.trim(),
-      };
-
-      const response = await api.post("/organizations", backendData);
-      console.log("Organization created successfully:", response.data);
-
+      const backendData = { organization_name: newOrgName.trim() };
+      // Utwórz organizację i pobierz zwrócone ID
+      const postOrgResp = await api.post("/organizations", backendData);
+      const newOrgId = postOrgResp.data.data.organization_id;
+      console.log("Organization created, ID:", newOrgId);
+      // Spróbuj nadać użytkownikowi rolę właściciela, ale nie przerywaj procesu jeśli się nie uda
       try {
-        const newOrgId = response.data.id;
-        console.log(
-          "Dashboard: Setting current user as owner for org ID:",
-          newOrgId
+        const roleBody = new URLSearchParams({ role: "owner" }).toString();
+        await api.post(
+          `/organization_users?organization_id=${newOrgId}&user_id=${user?.id}`,
+          roleBody,
+          { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
-        await api.post("/organization_users", {
-          organization_id: newOrgId,
-          user_id: user?.id,
-          role: "owner",
-        });
-        console.log("Dashboard: User added as owner successfully");
-      } catch (err: any) {
-        console.error("Dashboard: Error setting owner role:", err);
+        console.log("User assigned as owner successfully");
+      } catch (roleError) {
+        console.warn("Failed to assign owner role:", roleError);
+        showNotification(
+          "Organizacja utworzona, ale nie udało się nadać roli właściciela.",
+          "warning"
+        );
       }
-
+      // Sukces tworzenia organizacji
       showNotification(
         "Organizacja została utworzona pomyślnie! 🎉",
         "success"
       );
       setNewOrgName("");
       setCreateOrgDialogOpen(false);
-
+      // Odśwież listę organizacji w widoku i drawerze
       await loadOrganizations();
-
       if (profileDrawerOpen) {
-        loadProfileData();
+        await loadProfileData();
       }
     } catch (error: any) {
       console.error("Error creating organization:", error);
-
       if (
         error.response?.status === 409 ||
         error.response?.data?.message?.includes("already exists") ||
@@ -279,17 +341,9 @@ export default function Dashboard() {
           `Organizacja o nazwie "${newOrgName.trim()}" już istnieje! 🚫`,
           "error"
         );
-      } else if (error.response?.status === 400) {
-        showNotification(
-          "Nieprawidłowa nazwa organizacji. Sprawdź czy nie zawiera niedozwolonych znaków.",
-          "error"
-        );
       } else {
-        const errorMessage =
-          error.response?.data?.message ||
-          error.message ||
-          "Błąd podczas tworzenia organizacji!";
-        showNotification(`Błąd: ${errorMessage}`, "error");
+        const errMsg = error.response?.data?.message || error.message;
+        showNotification(`Błąd tworzenia organizacji: ${errMsg}`, "error");
       }
     } finally {
       setCreatingOrg(false);
@@ -444,6 +498,26 @@ export default function Dashboard() {
     router.push(`/organizations/${orgId}`);
   };
 
+  // Akceptacja lub odrzucenie zaproszenia
+  const handleAccept = async (id: number) => {
+    try {
+      await api.post(`/organization-invitations/${id}/accept`);
+      loadMyInvites();
+      // przeładuj organizacje
+      loadProfileData();
+    } catch (err) {
+      console.error("Error accepting invite:", err);
+    }
+  };
+  const handleDecline = async (id: number) => {
+    try {
+      await api.post(`/organization-invitations/${id}/decline`);
+      loadMyInvites();
+    } catch (err) {
+      console.error("Error declining invite:", err);
+    }
+  };
+
   // Loading states
   if (!isClient) {
     return (
@@ -530,11 +604,49 @@ export default function Dashboard() {
           {/* Left Column */}
           <Box sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <RecentNotesCard />
-            <OrganizationsSection
-              userOrganizations={userOrganizations}
-              onCreateClick={handleOrganizationsClick}
-              onOrganizationClick={handleOrganizationClick}
-            />
+            {myInvites.length > 0 ? (
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" sx={{ mb: 2 }}>
+                    Masz zaproszenia
+                  </Typography>
+                  <List>
+                    {myInvites.map((inv) => (
+                      <ListItem key={inv.id}>
+                        <ListItemText
+                          primary={`Organizacja ${inv.organization_id} (rola: ${inv.role})`}
+                          secondary={`Zaproszony: ${new Date(
+                            inv.created_at
+                          ).toLocaleDateString()}`}
+                        />
+                        <ListItemSecondaryAction>
+                          <Button
+                            size="small"
+                            onClick={() => handleAccept(inv.id)}
+                            sx={{ mr: 1 }}
+                          >
+                            Akceptuj
+                          </Button>
+                          <Button
+                            size="small"
+                            color="error"
+                            onClick={() => handleDecline(inv.id)}
+                          >
+                            Odrzuć
+                          </Button>
+                        </ListItemSecondaryAction>
+                      </ListItem>
+                    ))}
+                  </List>
+                </CardContent>
+              </Card>
+            ) : (
+              <OrganizationsSection
+                userOrganizations={userOrganizations}
+                onCreateClick={handleOrganizationsClick}
+                onOrganizationClick={handleOrganizationClick}
+              />
+            )}
           </Box>
 
           {/* Right Column */}
