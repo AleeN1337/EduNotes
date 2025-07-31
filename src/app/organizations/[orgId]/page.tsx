@@ -24,19 +24,21 @@ import {
   Collapse,
   Chip,
   Input,
+  Avatar,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AddIcon from "@mui/icons-material/Add";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
-import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
-import TopicIcon from "@mui/icons-material/Topic";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
-import api from "@/lib/api";
-import { UserOrganization } from "@/lib/profileApiSimple";
+import TopicIcon from "@mui/icons-material/Topic";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import BookIcon from "@mui/icons-material/Book";
+import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import SendIcon from "@mui/icons-material/Send";
+import api from "@/lib/api";
+import { UserOrganization } from "@/lib/profileApiSimple";
 
 interface Channel {
   id: string;
@@ -109,6 +111,17 @@ export default function OrganizationPage() {
     "#F0F4C3", // lime lighten
     "#B2EBF2", // cyan lighten
   ];
+
+  // Function to generate user initials
+  const getUserInitials = (userId: string) => {
+    // For now, use user ID to generate initials
+    // In real app, you'd fetch actual user names
+    const id = parseInt(userId) || 0;
+    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const first = letters[id % 26];
+    const second = letters[(id + 1) % 26];
+    return `${first}${second}`;
+  };
 
   // Load organization info
   useEffect(() => {
@@ -726,7 +739,7 @@ export default function OrganizationPage() {
       // Use API contract endpoint with query parameters
       await api.post(
         `/organization-invitations/`,
-        {},
+        null,
         {
           params: {
             organization_id: Number(orgId),
@@ -765,10 +778,13 @@ export default function OrganizationPage() {
   }, [messages]);
 
   return (
-    <div>
+    <Box sx={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       <AppBar
         position="static"
-        sx={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}
+        sx={{
+          background: "linear-gradient(135deg, #2c3e50 0%, #3498db 100%)",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+        }}
       >
         <Toolbar sx={{ minHeight: { xs: 56, sm: 64 } }}>
           <Button
@@ -793,113 +809,395 @@ export default function OrganizationPage() {
               fontWeight: 700,
               fontSize: { xs: "1.1rem", sm: "1.25rem" },
             }}
-          ></Typography>
+          >
+            {organizationName || `Organizacja ${orgId}`}
+          </Typography>
         </Toolbar>
       </AppBar>
 
-      <Container
-        maxWidth="xl"
+      <Box
         sx={{
-          mt: { xs: 2, sm: 3 },
-          mb: 4,
-          px: { xs: 2, sm: 3 },
+          flex: 1,
+          display: "grid",
+          gridTemplateColumns: {
+            xs: "1fr",
+            md: "300px 1fr",
+          },
+          height: "calc(100vh - 64px)",
+          overflow: "hidden",
         }}
       >
-        {/* Welcome Header */}
-        <Box sx={{ mb: 4 }}>
-          <Typography
-            variant="h4"
-            sx={{
-              fontWeight: 700,
-              color: "text.primary",
-              mb: 1,
-              fontSize: { xs: "1.75rem", sm: "2rem", md: "2.25rem" },
-            }}
-          >
-            🏢 {organizationName || `Organizacja ${orgId}`}
-          </Typography>
-          <Typography
-            variant="body1"
-            color="text.secondary"
-            sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
-          ></Typography>
-        </Box>
-
-        {/* Invitations Section */}
-        <Card
-          sx={{
-            mb: 4,
-            boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
-            borderRadius: 3,
-          }}
-        >
-          <CardHeader
-            title={
-              <Typography variant="h6">Zaproszenia do organizacji</Typography>
-            }
-            sx={{ pb: 1 }}
-          />
-          <CardContent>
-            <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
-              <TextField
-                fullWidth
-                size="small"
-                placeholder="Adres email użytkownika"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && handleSendInvite()}
-              />
-              <Button variant="contained" onClick={() => handleSendInvite()}>
-                Wyślij zaproszenie
-              </Button>
-            </Box>
-            {pendingInvites.length > 0 && (
-              <List>
-                {pendingInvites.map((inv) => (
-                  <ListItem key={inv.id}>
-                    <ListItemText
-                      primary={inv.email}
-                      secondary={`Status: ${inv.status}, wysłane: ${new Date(
-                        inv.invited_at
-                      ).toLocaleDateString()}`}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            )}
-          </CardContent>
-        </Card>
-
+        {/* Sidebar */}
         <Box
           sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              md: "2fr 1fr",
-            },
-            gap: 3,
+            borderRight: "1px solid #e0e0e0",
+            backgroundColor: "#f8f9fa",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
           }}
         >
-          {/* Chat Section */}
           <Card
             sx={{
-              boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
-              borderRadius: 3,
-              transition: "all 0.3s ease",
+              flex: 1,
+              borderRadius: 0,
+              boxShadow: "none",
+              display: "flex",
+              flexDirection: "column",
             }}
           >
             <CardHeader
-              avatar={<ChatBubbleOutlineIcon sx={{ color: "primary.main" }} />}
+              avatar={<BookIcon sx={{ color: "#2c3e50" }} />}
               title={
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {selectedTopic
-                    ? ` ${getCurrentChannelName()} - ${getCurrentTopicName()}`
-                    : " Czat (wybierz temat)"}
+                <Typography
+                  variant="h6"
+                  sx={{ fontWeight: 600, color: "#2c3e50" }}
+                >
+                  Przedmioty i Tematy
                 </Typography>
               }
-              sx={{ pb: 1 }}
+              sx={{
+                pb: 1,
+                backgroundColor: "white",
+                borderBottom: "1px solid #e0e0e0",
+              }}
             />
-            <CardContent sx={{ height: 400, overflowY: "auto", pt: 1 }}>
+            <CardContent sx={{ pt: 1, flex: 1, overflow: "auto" }}>
+              <List sx={{ py: 0 }}>
+                {channels.map((ch) => {
+                  const cid = String(ch.id ?? (ch as any).channel_id);
+                  const isExpanded = expandedChannels[cid] || false;
+                  const channelTopicsData = channelTopics[cid] || [];
+
+                  return (
+                    <Box key={cid} sx={{ mb: 1 }}>
+                      {/* Channel Header */}
+                      <ListItemButton
+                        onClick={() => {
+                          setSelectedChannel(cid);
+                          toggleChannelExpansion(cid);
+                        }}
+                        sx={{
+                          borderRadius: 2,
+                          backgroundColor:
+                            selectedChannel === cid ? "#e3f2fd" : "transparent",
+                          "&:hover": {
+                            backgroundColor: "#f5f5f5",
+                          },
+                        }}
+                      >
+                        <ListItemIcon sx={{ minWidth: 32 }}>
+                          {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1,
+                              }}
+                            >
+                              <Typography
+                                variant="subtitle1"
+                                sx={{ fontWeight: 600 }}
+                              >
+                                {ch.channel_name}
+                              </Typography>
+                              <Chip
+                                label={channelTopicsData.length}
+                                size="small"
+                                sx={{
+                                  minWidth: 20,
+                                  height: 20,
+                                  fontSize: "0.7rem",
+                                  backgroundColor: "#2c3e50",
+                                  color: "white",
+                                }}
+                              />
+                            </Box>
+                          }
+                        />
+                        <IconButton
+                          edge="end"
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAddingTopicToChannel(cid);
+                            // Ensure the channel is expanded when adding a topic
+                            setExpandedChannels((prev) => ({
+                              ...prev,
+                              [cid]: true,
+                            }));
+                          }}
+                          sx={{
+                            mr: 1,
+                            color: "#27ae60",
+                            "&:hover": {
+                              backgroundColor: "#27ae60",
+                              color: "white",
+                            },
+                          }}
+                        >
+                          <AddIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          edge="end"
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteChannel(cid);
+                          }}
+                          disabled={deletingChannel === cid}
+                          sx={{
+                            color: "#e74c3c",
+                            "&:hover": {
+                              backgroundColor: "#e74c3c",
+                              color: "white",
+                            },
+                          }}
+                        >
+                          {deletingChannel === cid ? (
+                            <HourglassEmptyIcon fontSize="small" />
+                          ) : (
+                            <DeleteIcon fontSize="small" />
+                          )}
+                        </IconButton>
+                      </ListItemButton>
+
+                      {/* Topics List - Collapsible */}
+                      <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                        <List sx={{ pl: 2, py: 0 }}>
+                          {/* Add Topic Form */}
+                          {addingTopicToChannel === cid && (
+                            <Box
+                              sx={{
+                                p: 2,
+                                backgroundColor: "#f0f8ff",
+                                borderRadius: 2,
+                                mb: 1,
+                                border: "1px solid #e3f2fd",
+                              }}
+                            >
+                              <TextField
+                                fullWidth
+                                size="small"
+                                placeholder="Nazwa nowego tematu"
+                                value={newTopicName}
+                                onChange={(e) =>
+                                  setNewTopicName(e.target.value)
+                                }
+                                onKeyPress={(e) => {
+                                  if (e.key === "Enter") {
+                                    handleAddTopicToChannel(cid);
+                                  }
+                                  if (e.key === "Escape") {
+                                    setAddingTopicToChannel(null);
+                                    setNewTopicName("");
+                                  }
+                                }}
+                                sx={{ mb: 1 }}
+                                autoFocus
+                              />
+                              <Box sx={{ display: "flex", gap: 1 }}>
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  onClick={() => handleAddTopicToChannel(cid)}
+                                  startIcon={<AddIcon />}
+                                  sx={{
+                                    backgroundColor: "#27ae60",
+                                    "&:hover": { backgroundColor: "#219a52" },
+                                  }}
+                                >
+                                  Dodaj
+                                </Button>
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  onClick={() => {
+                                    setAddingTopicToChannel(null);
+                                    setNewTopicName("");
+                                  }}
+                                >
+                                  Anuluj
+                                </Button>
+                              </Box>
+                            </Box>
+                          )}
+
+                          {channelTopicsData.map((topic) => (
+                            <Box
+                              key={topic.id}
+                              sx={{ display: "flex", alignItems: "center" }}
+                            >
+                              <ListItemButton
+                                onClick={() => handleTopicClick(topic, ch)}
+                                sx={{
+                                  borderRadius: 2,
+                                  mb: 0.5,
+                                  ml: 2,
+                                  backgroundColor:
+                                    selectedTopic === topic.id
+                                      ? "#fff3e0"
+                                      : "transparent",
+                                  "&:hover": {
+                                    backgroundColor:
+                                      selectedTopic === topic.id
+                                        ? "#ffe0b2"
+                                        : "#f5f5f5",
+                                  },
+                                  flex: 1,
+                                }}
+                              >
+                                <ListItemIcon sx={{ minWidth: 32 }}>
+                                  <TopicIcon
+                                    fontSize="small"
+                                    sx={{ color: "#ff9800" }}
+                                  />
+                                </ListItemIcon>
+                                <ListItemText
+                                  primary={topic.topic_name}
+                                  primaryTypographyProps={{
+                                    fontWeight:
+                                      selectedTopic === topic.id ? 600 : 400,
+                                    fontSize: "0.9rem",
+                                  }}
+                                />
+                              </ListItemButton>
+                              <IconButton
+                                size="small"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteTopic(topic.id);
+                                }}
+                                sx={{
+                                  mr: 1,
+                                  color: "#e74c3c",
+                                  "&:hover": {
+                                    backgroundColor: "#e74c3c",
+                                    color: "white",
+                                  },
+                                }}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Box>
+                          ))}
+                        </List>
+                      </Collapse>
+                    </Box>
+                  );
+                })}
+              </List>
+            </CardContent>
+            <Divider />
+            <CardActions sx={{ p: 2, backgroundColor: "white" }}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Nowy przedmiot"
+                value={newChannelName}
+                onChange={(e) => setNewChannelName(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && handleAddChannel()}
+                sx={{ mr: 1 }}
+              />
+              <Button
+                variant="contained"
+                onClick={handleAddChannel}
+                sx={{
+                  borderRadius: 2,
+                  textTransform: "none",
+                  fontWeight: 500,
+                  backgroundColor: "#2c3e50",
+                  "&:hover": { backgroundColor: "#34495e" },
+                }}
+              >
+                Dodaj
+              </Button>
+            </CardActions>
+
+            {/* Invitations Section in Sidebar */}
+            <Box
+              sx={{
+                p: 2,
+                backgroundColor: "white",
+                borderTop: "1px solid #e0e0e0",
+              }}
+            >
+              <Typography
+                variant="subtitle2"
+                sx={{ mb: 1, fontWeight: 600, color: "#2c3e50" }}
+              >
+                Zaproszenia
+              </Typography>
+              <Box sx={{ display: "flex", gap: 1, mb: 1 }}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="Email użytkownika"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  onKeyPress={(e) => e.key === "Enter" && handleSendInvite()}
+                />
+                <IconButton
+                  onClick={() => handleSendInvite()}
+                  sx={{
+                    color: "#3498db",
+                    "&:hover": { backgroundColor: "#3498db", color: "white" },
+                  }}
+                >
+                  <PersonAddIcon fontSize="small" />
+                </IconButton>
+              </Box>
+              {pendingInvites.length > 0 && (
+                <Typography variant="caption" color="text.secondary">
+                  {pendingInvites.length} oczekujących zaproszeń
+                </Typography>
+              )}
+            </Box>
+          </Card>
+        </Box>
+
+        {/* Main Chat Area */}
+        <Box
+          sx={{ display: "flex", flexDirection: "column", overflow: "hidden" }}
+        >
+          <Card
+            sx={{
+              flex: 1,
+              borderRadius: 0,
+              boxShadow: "none",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <CardHeader
+              avatar={<ChatBubbleOutlineIcon sx={{ color: "#3498db" }} />}
+              title={
+                <Typography
+                  variant="h6"
+                  sx={{ fontWeight: 600, color: "#2c3e50" }}
+                >
+                  {selectedTopic
+                    ? `${getCurrentChannelName()} - ${getCurrentTopicName()}`
+                    : "Czat (wybierz temat)"}
+                </Typography>
+              }
+              sx={{
+                pb: 1,
+                backgroundColor: "white",
+                borderBottom: "1px solid #e0e0e0",
+              }}
+            />
+            <CardContent
+              sx={{
+                flex: 1,
+                overflowY: "auto",
+                pt: 1,
+                backgroundColor: "#fafafa",
+              }}
+            >
               {!selectedTopic ? (
                 <Box
                   sx={{
@@ -938,23 +1236,41 @@ export default function OrganizationPage() {
                         width: "100%",
                         display: "flex",
                         justifyContent: isOwn ? "flex-start" : "flex-end",
-                        alignItems: "center",
+                        alignItems: "flex-start",
                         mb: 2,
+                        gap: 1,
                       }}
                     >
-                      {/* Bubble alignment using margins */}
+                      {/* Avatar for non-own messages */}
+                      {!isOwn && (
+                        <Avatar
+                          sx={{
+                            width: 32,
+                            height: 32,
+                            backgroundColor:
+                              userColors[msg.user_id] ?? "#bdbdbd",
+                            fontSize: "0.75rem",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {getUserInitials(msg.user_id)}
+                        </Avatar>
+                      )}
+
+                      {/* Message Bubble */}
                       <Box
                         sx={{
-                          ml: isOwn ? 0 : "auto",
-                          mr: isOwn ? "auto" : 0,
                           p: 2,
-                          maxWidth: "80%",
+                          maxWidth: "70%",
                           width: "auto",
-                          backgroundColor: userColors[msg.user_id] ?? "grey.200",
-                          color: "text.primary",
-                          borderRadius: 2,
+                          backgroundColor: userColors[msg.user_id] ?? "#e0e0e0",
+                          color: "#2c3e50",
+                          borderRadius: isOwn
+                            ? "18px 18px 4px 18px"
+                            : "18px 18px 18px 4px",
                           whiteSpace: "pre-wrap",
                           wordBreak: "break-word",
+                          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
                         }}
                       >
                         <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -962,26 +1278,43 @@ export default function OrganizationPage() {
                         </Typography>
                         <Typography
                           variant="caption"
-                          color={isOwn ? "white" : "text.secondary"}
-                          sx={{ display: "block", mt: 0.5 }}
+                          color="text.secondary"
+                          sx={{ display: "block", mt: 0.5, opacity: 0.7 }}
                         >
                           {new Date(msg.created_at).toLocaleTimeString()}
                         </Typography>
                       </Box>
+
+                      {/* Avatar and delete for own messages */}
                       {isOwn && (
-                        <IconButton
-                          size="small"
-                          onClick={() => handleDeleteMessage(msg.id)}
-                          sx={{
-                            ml: 1,
-                            "&:hover": {
-                              backgroundColor: "error.light",
-                              color: "white",
-                            },
-                          }}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
+                        <>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDeleteMessage(msg.id)}
+                            sx={{
+                              opacity: 0.6,
+                              "&:hover": {
+                                backgroundColor: "#e74c3c",
+                                color: "white",
+                                opacity: 1,
+                              },
+                            }}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                          <Avatar
+                            sx={{
+                              width: 32,
+                              height: 32,
+                              backgroundColor:
+                                userColors[msg.user_id] ?? "#bdbdbd",
+                              fontSize: "0.75rem",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {getUserInitials(msg.user_id)}
+                          </Avatar>
+                        </>
                       )}
                     </Box>
                   );
@@ -989,18 +1322,26 @@ export default function OrganizationPage() {
               )}
             </CardContent>
             <Divider />
-            <CardActions sx={{ p: 2, flexDirection: "column", gap: 1 }}>
+            <CardActions
+              sx={{
+                p: 2,
+                flexDirection: "column",
+                gap: 1,
+                backgroundColor: "white",
+              }}
+            >
               {/* File Preview */}
               {selectedFile && (
                 <Box
                   sx={{
                     width: "100%",
                     p: 1,
-                    backgroundColor: "grey.50",
+                    backgroundColor: "#f0f8ff",
                     borderRadius: 1,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
+                    border: "1px solid #e3f2fd",
                   }}
                 >
                   <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -1011,7 +1352,7 @@ export default function OrganizationPage() {
                     onClick={() => setSelectedFile(null)}
                     sx={{
                       "&:hover": {
-                        backgroundColor: "error.light",
+                        backgroundColor: "#e74c3c",
                         color: "white",
                       },
                     }}
@@ -1044,6 +1385,11 @@ export default function OrganizationPage() {
                     e.key === "Enter" && selectedTopic && handleSendMessage()
                   }
                   disabled={!selectedTopic}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: "20px",
+                    },
+                  }}
                 />
 
                 {/* File Upload Button */}
@@ -1058,11 +1404,14 @@ export default function OrganizationPage() {
                   <IconButton
                     component="span"
                     sx={{
-                      color: "primary.main",
-                      "&:hover": { backgroundColor: "primary.light" },
+                      color: "#7f8c8d",
+                      "&:hover": {
+                        backgroundColor: "#ecf0f1",
+                        color: "#2c3e50",
+                      },
                     }}
                   >
-                    <PhotoCameraIcon />
+                    <AttachFileIcon />
                   </IconButton>
                 </label>
 
@@ -1070,11 +1419,14 @@ export default function OrganizationPage() {
                   variant="contained"
                   onClick={handleSendMessage}
                   disabled={!selectedTopic || !newMessage.trim()}
+                  startIcon={<SendIcon />}
                   sx={{
-                    borderRadius: 2,
+                    borderRadius: "20px",
                     textTransform: "none",
                     fontWeight: 500,
                     minWidth: "80px",
+                    backgroundColor: "#3498db",
+                    "&:hover": { backgroundColor: "#2980b9" },
                   }}
                 >
                   Wyślij
@@ -1082,282 +1434,8 @@ export default function OrganizationPage() {
               </Box>
             </CardActions>
           </Card>
-
-          {/* Sidebar */}
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            <Card
-              sx={{
-                boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
-                borderRadius: 3,
-                transition: "all 0.3s ease",
-              }}
-            >
-              <CardHeader
-                avatar={<BookIcon sx={{ color: "secondary.main" }} />}
-                title={
-                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                    Przedmioty i Tematy
-                  </Typography>
-                }
-                sx={{ pb: 1 }}
-              />
-              <CardContent sx={{ pt: 1 }}>
-                <List sx={{ py: 0 }}>
-                  {channels.map((ch) => {
-                    const cid = String(ch.id ?? (ch as any).channel_id);
-                    const isExpanded = expandedChannels[cid] || false;
-                    const channelTopicsData = channelTopics[cid] || [];
-
-                    return (
-                      <Box key={cid} sx={{ mb: 1 }}>
-                        {/* Channel Header */}
-                        <ListItemButton
-                          onClick={() => {
-                            setSelectedChannel(cid);
-                            toggleChannelExpansion(cid);
-                          }}
-                          sx={{
-                            borderRadius: 2,
-                            backgroundColor:
-                              selectedChannel === cid
-                                ? "primary.light"
-                                : "transparent",
-                            "&:hover": {
-                              backgroundColor: "grey.100",
-                            },
-                          }}
-                        >
-                          <ListItemIcon sx={{ minWidth: 32 }}>
-                            {isExpanded ? (
-                              <ExpandLessIcon />
-                            ) : (
-                              <ExpandMoreIcon />
-                            )}
-                          </ListItemIcon>
-                          <ListItemText
-                            primary={
-                              <Box
-                                sx={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 1,
-                                }}
-                              >
-                                <Typography
-                                  variant="subtitle1"
-                                  sx={{ fontWeight: 600 }}
-                                >
-                                  {ch.channel_name}
-                                </Typography>
-                                <Chip
-                                  label={channelTopicsData.length}
-                                  size="small"
-                                  sx={{
-                                    minWidth: 20,
-                                    height: 20,
-                                    fontSize: "0.7rem",
-                                  }}
-                                />
-                              </Box>
-                            }
-                          />
-                          <IconButton
-                            edge="end"
-                            size="small"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setAddingTopicToChannel(cid);
-                              // Ensure the channel is expanded when adding a topic
-                              setExpandedChannels((prev) => ({
-                                ...prev,
-                                [cid]: true,
-                              }));
-                            }}
-                            sx={{
-                              mr: 1,
-                              color: "success.main",
-                              "&:hover": {
-                                backgroundColor: "success.light",
-                                color: "white",
-                              },
-                            }}
-                          >
-                            <AddIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton
-                            edge="end"
-                            size="small"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteChannel(cid);
-                            }}
-                            disabled={deletingChannel === cid}
-                            sx={{
-                              "&:hover": {
-                                backgroundColor: "error.light",
-                                color: "white",
-                              },
-                            }}
-                          >
-                            {deletingChannel === cid ? (
-                              <HourglassEmptyIcon fontSize="small" />
-                            ) : (
-                              <DeleteIcon fontSize="small" />
-                            )}
-                          </IconButton>
-                        </ListItemButton>
-
-                        {/* Topics List - Collapsible */}
-                        <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                          <List sx={{ pl: 2, py: 0 }}>
-                            {/* Add Topic Form */}
-                            {addingTopicToChannel === cid && (
-                              <Box
-                                sx={{
-                                  p: 2,
-                                  backgroundColor: "grey.50",
-                                  borderRadius: 2,
-                                  mb: 1,
-                                }}
-                              >
-                                <TextField
-                                  fullWidth
-                                  size="small"
-                                  placeholder="Nazwa nowego tematu (nazwy mogą się powtarzać między przedmiotami)"
-                                  value={newTopicName}
-                                  onChange={(e) =>
-                                    setNewTopicName(e.target.value)
-                                  }
-                                  onKeyPress={(e) => {
-                                    if (e.key === "Enter") {
-                                      handleAddTopicToChannel(cid);
-                                    }
-                                    if (e.key === "Escape") {
-                                      setAddingTopicToChannel(null);
-                                      setNewTopicName("");
-                                    }
-                                  }}
-                                  sx={{ mb: 1 }}
-                                  autoFocus
-                                  helperText="Uwaga: Jeśli nazwa już istnieje w systemie, użyj innej nazwy"
-                                />
-                                <Box sx={{ display: "flex", gap: 1 }}>
-                                  <Button
-                                    size="small"
-                                    variant="contained"
-                                    color="success"
-                                    onClick={() => handleAddTopicToChannel(cid)}
-                                    startIcon={<AddIcon />}
-                                  >
-                                    Dodaj
-                                  </Button>
-                                  <Button
-                                    size="small"
-                                    variant="outlined"
-                                    onClick={() => {
-                                      setAddingTopicToChannel(null);
-                                      setNewTopicName("");
-                                    }}
-                                  >
-                                    Anuluj
-                                  </Button>
-                                </Box>
-                              </Box>
-                            )}
-
-                            {channelTopicsData.map((topic) => (
-                              <Box
-                                key={topic.id}
-                                sx={{ display: "flex", alignItems: "center" }}
-                              >
-                                <ListItemButton
-                                  onClick={() => handleTopicClick(topic, ch)}
-                                  sx={{
-                                    borderRadius: 2,
-                                    mb: 0.5,
-                                    ml: 2,
-                                    backgroundColor:
-                                      selectedTopic === topic.id
-                                        ? "warning.light"
-                                        : "transparent",
-                                    "&:hover": {
-                                      backgroundColor:
-                                        selectedTopic === topic.id
-                                          ? "warning.main"
-                                          : "grey.50",
-                                    },
-                                    flex: 1,
-                                  }}
-                                >
-                                  <ListItemIcon sx={{ minWidth: 32 }}>
-                                    <TopicIcon
-                                      fontSize="small"
-                                      sx={{ color: "warning.main" }}
-                                    />
-                                  </ListItemIcon>
-                                  <ListItemText
-                                    primary={topic.topic_name}
-                                    primaryTypographyProps={{
-                                      fontWeight:
-                                        selectedTopic === topic.id ? 600 : 400,
-                                      fontSize: "0.9rem",
-                                    }}
-                                  />
-                                </ListItemButton>
-                                <IconButton
-                                  size="small"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteTopic(topic.id);
-                                  }}
-                                  sx={{
-                                    mr: 1,
-                                    "&:hover": {
-                                      backgroundColor: "error.light",
-                                      color: "white",
-                                    },
-                                  }}
-                                >
-                                  <DeleteIcon fontSize="small" />
-                                </IconButton>
-                              </Box>
-                            ))}
-                          </List>
-                        </Collapse>
-                      </Box>
-                    );
-                  })}
-                </List>
-              </CardContent>
-              <Divider />
-              <CardActions sx={{ p: 2 }}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  placeholder="Nowy przedmiot (nazwy mogą się powtarzać między organizacjami)"
-                  value={newChannelName}
-                  onChange={(e) => setNewChannelName(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && handleAddChannel()}
-                  sx={{ mr: 1 }}
-                  helperText="Uwaga: Jeśli nazwa już istnieje w systemie, użyj innej nazwy"
-                />
-                <Button
-                  variant="contained"
-                  color="secondary"
-                  onClick={handleAddChannel}
-                  sx={{
-                    borderRadius: 2,
-                    textTransform: "none",
-                    fontWeight: 500,
-                  }}
-                >
-                  Dodaj
-                </Button>
-              </CardActions>
-            </Card>
-          </Box>
         </Box>
-      </Container>
-    </div>
+      </Box>
+    </Box>
   );
 }

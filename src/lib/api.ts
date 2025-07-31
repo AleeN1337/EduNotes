@@ -57,6 +57,7 @@ api.interceptors.response.use(
         "/deadlines/my_deadlines", // Użytkownik może nie mieć terminów
         "/auth/me", // Może nie być zaimplementowane w backend
         "/organization-invitations/sent", // Sent invites may not be implemented
+        "/organization-invitations/my", // My invites endpoint may not exist
       ];
 
       if (expected404Endpoints.some((endpoint) => url?.includes(endpoint))) {
