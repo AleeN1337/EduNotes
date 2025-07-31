@@ -395,24 +395,21 @@ export default function OrganizationPage() {
     return () => clearInterval(interval);
   }, [selectedTopic]);
 
-  // Function to add a new channel (subject)
-  const handleAddChannel = async () => {
+  async function handleAddChannel() {
     if (!newChannelName.trim()) return;
     try {
-      // Create channel for this organization
       const response = await api.post(`/channels/`, {
         channel_name: newChannelName.trim(),
         organization_id: Number(orgId),
       });
-      // Unwrap created channel from response wrapper
+
       const newChannel = response.data.data ?? response.data;
       setNewChannelName("");
 
-      // Reload channels list
       const channelsResponse = await api.get(
         `/channels/channels_in_organization?organization_id=${orgId}`
       );
-      // Unwrap list from possible wrapper
+
       const rawChannels = Array.isArray(channelsResponse.data)
         ? channelsResponse.data
         : channelsResponse.data.data ?? [];
@@ -422,11 +419,10 @@ export default function OrganizationPage() {
       }));
       setChannels(updatedChannels);
 
-      // Select the newly created channel
       setSelectedChannel(String(newChannel.id ?? newChannel.channel_id));
     } catch (error: any) {
       console.warn("Error adding channel (allowing duplicates):", error);
-      // Reload channels list even on error
+
       const channelsResponse = await api.get(
         `/channels/channels_in_organization?organization_id=${orgId}`
       );
@@ -439,12 +435,12 @@ export default function OrganizationPage() {
       }));
       setChannels(updatedChannels);
       setNewChannelName("");
-      // Select the latest channel
+
       if (updatedChannels.length > 0) {
         setSelectedChannel(updatedChannels[updatedChannels.length - 1].id);
       }
     }
-  };
+  }
 
   // Function to add topic to specific channel
   const handleAddTopicToChannel = async (channelId: string) => {
@@ -736,18 +732,13 @@ export default function OrganizationPage() {
   const handleSendInvite = async () => {
     if (!inviteEmail.trim()) return;
     try {
-      // Use API contract endpoint with query parameters
-      await api.post(
-        `/organization-invitations/`,
-        null,
-        {
-          params: {
-            organization_id: Number(orgId),
-            email: inviteEmail.trim(),
-            role: "user",
-          },
-        }
-      );
+      await api.post(`/organization-invitations/`, null, {
+        params: {
+          organization_id: Number(orgId),
+          email: inviteEmail.trim(),
+          role: "user",
+        },
+      });
       setInviteEmail("");
       loadPendingInvites();
     } catch (error: any) {
@@ -904,17 +895,6 @@ export default function OrganizationPage() {
                               >
                                 {ch.channel_name}
                               </Typography>
-                              <Chip
-                                label={channelTopicsData.length}
-                                size="small"
-                                sx={{
-                                  minWidth: 20,
-                                  height: 20,
-                                  fontSize: "0.7rem",
-                                  backgroundColor: "#2c3e50",
-                                  color: "white",
-                                }}
-                              />
                             </Box>
                           }
                         />

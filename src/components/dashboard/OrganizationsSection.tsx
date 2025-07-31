@@ -16,6 +16,7 @@ export default function OrganizationsSection({
   userOrganizations,
   onCreateClick,
   onOrganizationClick,
+  orgStats,
 }: OrganizationsSectionProps) {
   const router = useRouter();
 
@@ -158,8 +159,16 @@ export default function OrganizationsSection({
                   </Typography>
 
                   <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
-                    <Chip label="-- kanałów" size="small" variant="outlined" />
-                    <Chip label="-- członków" size="small" variant="outlined" />
+                    <Chip
+                      label={`${orgStats[org.id]?.channels ?? 0} Kanały`}
+                      size="small"
+                      variant="outlined"
+                    />
+                    <Chip
+                      label={`${orgStats[org.id]?.members ?? 0} Członków`}
+                      size="small"
+                      variant="outlined"
+                    />
                   </Box>
 
                   <Button

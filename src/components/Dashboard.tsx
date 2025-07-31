@@ -72,6 +72,9 @@ export default function Dashboard() {
 
   // Stan dla zaproszeń
   const [myInvites, setMyInvites] = useState<any[]>([]);
+  const [orgStats, setOrgStats] = useState<
+    Record<string, { members: number; channels: number }>
+  >({});
 
   const router = useRouter();
 
@@ -174,8 +177,12 @@ export default function Dashboard() {
             created_at: i.created_at,
           }))
       );
-    } catch (err) {
-      console.error("Error loading my invitations:", err);
+    } catch (err: any) {
+      // If endpoint not found, treat as no invites; only log unexpected errors
+      if (err.response?.status !== 404) {
+        console.error("Error loading my invitations:", err);
+      }
+      setMyInvites([]);
     }
   };
   useEffect(() => {
@@ -266,7 +273,36 @@ export default function Dashboard() {
       console.log("Dashboard: Organizations response:", organizationsResponse);
 
       if (organizationsResponse.success) {
-        setUserOrganizations(organizationsResponse.data);
+        const orgs = organizationsResponse.data;
+        setUserOrganizations(orgs);
+        // Fetch stats for each organization
+        const stats: Record<string, { members: number; channels: number }> = {};
+        await Promise.all(
+          orgs.map(async (org) => {
+            try {
+              const [membersRes, channelsRes] = await Promise.all([
+                api.get(`/organization_users/${org.id}`),
+                api.get(
+                  `/channels/channels_in_organization?organization_id=${org.id}`
+                ),
+              ]);
+              const membersRaw = Array.isArray(membersRes.data)
+                ? membersRes.data
+                : membersRes.data.data ?? [];
+              const channelsRaw = Array.isArray(channelsRes.data)
+                ? channelsRes.data
+                : channelsRes.data.data ?? [];
+              stats[org.id] = {
+                members: membersRaw.length,
+                channels: channelsRaw.length,
+              };
+            } catch (err) {
+              console.error(`Error fetching stats for org ${org.id}:`, err);
+              stats[org.id] = { members: 0, channels: 0 };
+            }
+          })
+        );
+        setOrgStats(stats);
         console.log(
           "Dashboard: Organizations updated successfully:",
           organizationsResponse.data
@@ -645,6 +681,7 @@ export default function Dashboard() {
                 userOrganizations={userOrganizations}
                 onCreateClick={handleOrganizationsClick}
                 onOrganizationClick={handleOrganizationClick}
+                orgStats={orgStats}
               />
             )}
           </Box>
