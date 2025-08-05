@@ -143,6 +143,8 @@ export class AuthAPI {
   static async logout(): Promise<void> {
     localStorage.removeItem("auth_token");
     localStorage.removeItem("user");
+    // Reset session start time only on logout
+    localStorage.removeItem("session_start");
 
     // Usuń również z cookies
     document.cookie =

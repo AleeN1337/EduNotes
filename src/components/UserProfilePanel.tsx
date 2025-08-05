@@ -34,6 +34,8 @@ import {
   TrendingUp as TrendingIcon,
 } from "@mui/icons-material";
 import { User, Organization } from "@/types";
+import React, { useState, useEffect } from "react";
+import api from "@/lib/api";
 
 interface UserProfilePanelProps {
   user: User;
@@ -52,6 +54,38 @@ export default function UserProfilePanel({
   onCreateOrganization,
   onSelectOrganization,
 }: UserProfilePanelProps) {
+  const [panelNotes, setPanelNotes] = useState<number>(0);
+  const [panelOrgsCount, setPanelOrgsCount] = useState<number>(
+    organizations.length
+  );
+
+  useEffect(() => {
+    const loadNotes = async () => {
+      try {
+        const res = await api.get("/notes/my");
+        const arr = Array.isArray(res.data?.data) ? res.data.data : [];
+        setPanelNotes(arr.length);
+      } catch (err) {
+        console.error("UserProfilePanel: Error fetching notes", err);
+      }
+    };
+    loadNotes();
+  }, []);
+
+  // Dynamiczne odświeżanie liczby organizacji
+  useEffect(() => {
+    const loadOrgs = async () => {
+      try {
+        const res = await api.get("/organizations/my");
+        const arr = Array.isArray(res.data?.data) ? res.data.data : [];
+        setPanelOrgsCount(arr.length);
+      } catch (err) {
+        console.error("UserProfilePanel: Error fetching organizations", err);
+      }
+    };
+    loadOrgs();
+  }, []);
+
   return (
     <Drawer
       anchor="right"
@@ -181,7 +215,7 @@ export default function UserProfilePanel({
               }}
             >
               <Typography variant="h6">
-                Organizacje ({organizations.length})
+                Organizacje ({panelOrgsCount})
               </Typography>
               {onCreateOrganization && (
                 <Button
@@ -231,7 +265,7 @@ export default function UserProfilePanel({
                     onClick={() => {
                       if (onSelectOrganization) {
                         onSelectOrganization(org);
-                        onClose(); // Zamknij panel po wyborze organizacji
+                        onClose();
                       }
                     }}
                   >
@@ -296,7 +330,7 @@ export default function UserProfilePanel({
             >
               <Box>
                 <Typography variant="h4" color="primary.main">
-                  0
+                  {panelNotes}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   Notatki

@@ -347,168 +347,6 @@ export default function ProfileDrawer({
           </Box>
         );
 
-      case 2: // Statystyki
-        return (
-          <Box sx={{ p: 3 }}>
-            <Typography
-              variant="h5"
-              gutterBottom
-              sx={{
-                fontWeight: 600,
-                color: "primary.main",
-                mb: 3,
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-              }}
-            >
-              <StatsIcon />
-              Statystyki aktywności
-            </Typography>
-            {userStats ? (
-              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
-                <Box
-                  sx={{
-                    flex: { xs: "1 1 100%", sm: "1 1 45%" },
-                    minWidth: 120,
-                  }}
-                >
-                  <Card
-                    sx={{
-                      boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
-                      borderRadius: 3,
-                      background:
-                        "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                      color: "white",
-                      transition: "all 0.3s ease",
-                      "&:hover": {
-                        transform: "translateY(-4px)",
-                        boxShadow: "0 8px 30px rgba(0,0,0,0.2)",
-                      },
-                    }}
-                  >
-                    <CardContent sx={{ textAlign: "center", p: 3 }}>
-                      <Typography variant="h3" sx={{ fontWeight: 700, mb: 1 }}>
-                        {userStats.totalNotes}
-                      </Typography>
-                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                        Utworzone notatki
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Box>
-                <Box
-                  sx={{
-                    flex: { xs: "1 1 100%", sm: "1 1 45%" },
-                    minWidth: 120,
-                  }}
-                >
-                  <Card
-                    sx={{
-                      boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
-                      borderRadius: 3,
-                      background:
-                        "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-                      color: "white",
-                      transition: "all 0.3s ease",
-                      "&:hover": {
-                        transform: "translateY(-4px)",
-                        boxShadow: "0 8px 30px rgba(0,0,0,0.2)",
-                      },
-                    }}
-                  >
-                    <CardContent sx={{ textAlign: "center", p: 3 }}>
-                      <Typography variant="h3" sx={{ fontWeight: 700, mb: 1 }}>
-                        {userStats.sharedNotes}
-                      </Typography>
-                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                        Udostępnione
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Box>
-                <Box
-                  sx={{
-                    flex: { xs: "1 1 100%", sm: "1 1 45%" },
-                    minWidth: 120,
-                  }}
-                >
-                  <Card
-                    sx={{
-                      boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
-                      borderRadius: 3,
-                      background:
-                        "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
-                      color: "white",
-                      transition: "all 0.3s ease",
-                      "&:hover": {
-                        transform: "translateY(-4px)",
-                        boxShadow: "0 8px 30px rgba(0,0,0,0.2)",
-                      },
-                    }}
-                  >
-                    <CardContent sx={{ textAlign: "center", p: 3 }}>
-                      <Typography variant="h3" sx={{ fontWeight: 700, mb: 1 }}>
-                        {userStats.activeDays}
-                      </Typography>
-                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                        Dni aktywności
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Box>
-                <Box
-                  sx={{
-                    flex: { xs: "1 1 100%", sm: "1 1 45%" },
-                    minWidth: 120,
-                  }}
-                >
-                  <Card
-                    sx={{
-                      boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
-                      borderRadius: 3,
-                      background:
-                        "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
-                      color: "white",
-                      transition: "all 0.3s ease",
-                      "&:hover": {
-                        transform: "translateY(-4px)",
-                        boxShadow: "0 8px 30px rgba(0,0,0,0.2)",
-                      },
-                    }}
-                  >
-                    <CardContent sx={{ textAlign: "center", p: 3 }}>
-                      <Typography variant="h3" sx={{ fontWeight: 700, mb: 1 }}>
-                        {userStats.organizationCount}
-                      </Typography>
-                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                        Organizacje
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Box>
-              </Box>
-            ) : (
-              <Card
-                sx={{
-                  boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
-                  borderRadius: 3,
-                }}
-              >
-                <CardContent sx={{ textAlign: "center", py: 6 }}>
-                  <CircularProgress sx={{ mb: 2 }} />
-                  <Typography variant="h6" color="text.secondary" gutterBottom>
-                    Ładowanie statystyk...
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Proszę czekać, zbieramy dane o Twojej aktywności
-                  </Typography>
-                </CardContent>
-              </Card>
-            )}
-          </Box>
-        );
-
       case 3: // Zmiana hasła
         return (
           <Box sx={{ p: 3 }}>
@@ -786,11 +624,18 @@ export default function ProfileDrawer({
             },
           }}
         >
-          <Tab icon={<InfoIcon />} label="Ogólne" />
-          <Tab icon={<OrganizationsIcon />} label="Organizacje" />
-          <Tab icon={<StatsIcon />} label="Statystyki" />
-          <Tab icon={<PasswordIcon />} label="Hasło" />
-          <Tab icon={<SettingsIcon />} label="Ustawienia" />
+          <Tab icon={<InfoIcon />} label="Ogólne" iconPosition="start" />
+          <Tab
+            icon={<OrganizationsIcon />}
+            label="Organizacje"
+            iconPosition="start"
+          />
+          <Tab icon={<PasswordIcon />} label="Hasło" iconPosition="start" />
+          <Tab
+            icon={<SettingsIcon />}
+            label="Ustawienia"
+            iconPosition="start"
+          />
         </Tabs>
       </Box>
 

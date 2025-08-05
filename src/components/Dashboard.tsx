@@ -26,7 +26,6 @@ import {
   CreateOrganizationDialog,
   QuickStatsCards,
   OrganizationsSection,
-  QuickActionsCard,
   UpcomingTasksCard,
   CalendarWidget,
   RecentNotesCard,
@@ -688,7 +687,6 @@ export default function Dashboard() {
 
           {/* Right Column */}
           <Box sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <QuickActionsCard />
             <UpcomingTasksCard />
             <CalendarWidget />
           </Box>
