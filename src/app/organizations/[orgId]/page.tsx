@@ -66,6 +66,12 @@ interface Invite {
   invited_at: string;
 }
 
+interface Task {
+  id: string;
+  title: string;
+  due_date: string;
+}
+
 export default function OrganizationPage() {
   // Unwrap dynamic route params
   const { orgId } = useParams() as { orgId: string };
@@ -99,6 +105,21 @@ export default function OrganizationPage() {
   const [inviteEmail, setInviteEmail] = useState<string>("");
   const [pendingInvites, setPendingInvites] = useState<Invite[]>([]);
   const [userColors, setUserColors] = useState<Record<string, string>>({});
+
+  // Tasks state stored in localStorage per organization
+  const storageKey = `tasks_${orgId}`;
+  const [tasks, setTasks] = useState<Task[]>(() => {
+    try {
+      const stored = localStorage.getItem(storageKey);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [addingTask, setAddingTask] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskDate, setNewTaskDate] = useState("");
+  const [newTaskTime, setNewTaskTime] = useState("");
 
   // Define a set of distinct pastel colors for users
   const colorOptions = [
@@ -768,6 +789,38 @@ export default function OrganizationPage() {
     }
   }, [messages]);
 
+  // No need to fetch tasks, load from localStorage on org change
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(storageKey);
+      setTasks(stored ? JSON.parse(stored) : []);
+    } catch (err) {
+      console.error("Error loading tasks from localStorage:", err);
+    }
+  }, [orgId]);
+
+  // Add new task handler storing locally
+  const handleAddTask = () => {
+    if (!newTaskTitle || !newTaskDate || !newTaskTime) return;
+    const dueDateTime = `${newTaskDate}T${newTaskTime}`;
+    const newTask: Task = {
+      id: Date.now().toString(),
+      title: newTaskTitle.trim(),
+      due_date: dueDateTime,
+    };
+    const updated = [...tasks, newTask];
+    setTasks(updated);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(updated));
+    } catch (err) {
+      console.error("Error saving tasks to localStorage:", err);
+    }
+    setNewTaskTitle("");
+    setNewTaskDate("");
+    setNewTaskTime("");
+    setAddingTask(false);
+  };
+
   return (
     <Box sx={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       <AppBar
@@ -1143,145 +1196,165 @@ export default function OrganizationPage() {
         <Box
           sx={{ display: "flex", flexDirection: "column", overflow: "hidden" }}
         >
-          <Card
+          {/* Zadania/Egzaminów/Kolosów */}
+          <Card sx={{ mb: 2, mx: 2 }}>
+            <CardHeader
+              title="Zadania"
+              action={
+                <Button
+                  size="small"
+                  startIcon={<AddIcon />}
+                  onClick={() => setAddingTask(true)}
+                >
+                  Dodaj zadanie
+                </Button>
+              }
+            />
+            <Collapse in={addingTask} timeout="auto" unmountOnExit>
+              <Box
+                sx={{
+                  p: 2,
+                  display: "flex",
+                  gap: 1,
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                }}
+              >
+                <TextField
+                  label="Nazwa zadania"
+                  size="small"
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                />
+                <TextField
+                  type="date"
+                  size="small"
+                  value={newTaskDate}
+                  onChange={(e) => setNewTaskDate(e.target.value)}
+                />
+                <TextField
+                  type="time"
+                  size="small"
+                  value={newTaskTime}
+                  onChange={(e) => setNewTaskTime(e.target.value)}
+                />
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={handleAddTask}
+                >
+                  Dodaj
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => setAddingTask(false)}
+                >
+                  Anuluj
+                </Button>
+              </Box>
+            </Collapse>
+            <List sx={{ maxHeight: 200, overflow: "auto" }}>
+              {tasks.map((task) => (
+                <ListItem key={task.id} sx={{ py: 0.5 }}>
+                  <ListItemText
+                    primary={task.title}
+                    secondary={new Date(task.due_date).toLocaleString()}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Card>
+          {/* End Zadania section */}
+
+          {/* Main Chat Area */}
+          <Box
             sx={{
-              flex: 1,
-              borderRadius: 0,
-              boxShadow: "none",
               display: "flex",
               flexDirection: "column",
+              overflow: "hidden",
             }}
           >
-            <CardHeader
-              avatar={<ChatBubbleOutlineIcon sx={{ color: "#3498db" }} />}
-              title={
-                <Typography
-                  variant="h6"
-                  sx={{ fontWeight: 600, color: "#2c3e50" }}
-                >
-                  {selectedTopic
-                    ? `${getCurrentChannelName()} - ${getCurrentTopicName()}`
-                    : "Czat (wybierz temat)"}
-                </Typography>
-              }
-              sx={{
-                pb: 1,
-                backgroundColor: "white",
-                borderBottom: "1px solid #e0e0e0",
-              }}
-            />
-            <CardContent
+            <Card
               sx={{
                 flex: 1,
-                overflowY: "auto",
-                pt: 1,
-                backgroundColor: "#fafafa",
+                borderRadius: 0,
+                boxShadow: "none",
+                display: "flex",
+                flexDirection: "column",
               }}
             >
-              {!selectedTopic ? (
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    height: "100%",
-                    color: "text.secondary",
-                  }}
-                >
-                  <Typography variant="body2">
-                    📝 Wybierz temat aby zobaczyć wiadomości
+              <CardHeader
+                avatar={<ChatBubbleOutlineIcon sx={{ color: "#3498db" }} />}
+                title={
+                  <Typography
+                    variant="h6"
+                    sx={{ fontWeight: 600, color: "#2c3e50" }}
+                  >
+                    {selectedTopic
+                      ? `${getCurrentChannelName()} - ${getCurrentTopicName()}`
+                      : "Czat (wybierz temat)"}
                   </Typography>
-                </Box>
-              ) : messages.length === 0 ? (
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    height: "100%",
-                    color: "text.secondary",
-                  }}
-                >
-                  <Typography variant="body2">
-                    💬 Brak wiadomości w tym temacie. Napisz pierwszą!
-                  </Typography>
-                </Box>
-              ) : (
-                messages.map((msg) => {
-                  const isOwn = String(msg.user_id) === currentUserId;
-                  return (
-                    <Box
-                      key={msg.id}
-                      sx={{
-                        width: "100%",
-                        display: "flex",
-                        justifyContent: isOwn ? "flex-start" : "flex-end",
-                        alignItems: "flex-start",
-                        mb: 2,
-                        gap: 1,
-                      }}
-                    >
-                      {/* Avatar for non-own messages */}
-                      {!isOwn && (
-                        <Avatar
-                          sx={{
-                            width: 32,
-                            height: 32,
-                            backgroundColor:
-                              userColors[msg.user_id] ?? "#bdbdbd",
-                            fontSize: "0.75rem",
-                            fontWeight: 600,
-                          }}
-                        >
-                          {getUserInitials(msg.user_id)}
-                        </Avatar>
-                      )}
-
-                      {/* Message Bubble */}
+                }
+                sx={{
+                  pb: 1,
+                  backgroundColor: "white",
+                  borderBottom: "1px solid #e0e0e0",
+                }}
+              />
+              <CardContent
+                sx={{
+                  flex: 1,
+                  overflowY: "auto",
+                  pt: 1,
+                  backgroundColor: "#fafafa",
+                }}
+              >
+                {!selectedTopic ? (
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      height: "100%",
+                      color: "text.secondary",
+                    }}
+                  >
+                    <Typography variant="body2">
+                      📝 Wybierz temat aby zobaczyć wiadomości
+                    </Typography>
+                  </Box>
+                ) : messages.length === 0 ? (
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      height: "100%",
+                      color: "text.secondary",
+                    }}
+                  >
+                    <Typography variant="body2">
+                      💬 Brak wiadomości w tym temacie. Napisz pierwszą!
+                    </Typography>
+                  </Box>
+                ) : (
+                  messages.map((msg) => {
+                    const isOwn = String(msg.user_id) === currentUserId;
+                    return (
                       <Box
+                        key={msg.id}
                         sx={{
-                          p: 2,
-                          maxWidth: "70%",
-                          width: "auto",
-                          backgroundColor: userColors[msg.user_id] ?? "#e0e0e0",
-                          color: "#2c3e50",
-                          borderRadius: isOwn
-                            ? "18px 18px 4px 18px"
-                            : "18px 18px 18px 4px",
-                          whiteSpace: "pre-wrap",
-                          wordBreak: "break-word",
-                          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                          width: "100%",
+                          display: "flex",
+                          justifyContent: isOwn ? "flex-start" : "flex-end",
+                          alignItems: "flex-start",
+                          mb: 2,
+                          gap: 1,
                         }}
                       >
-                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                          {msg.content}
-                        </Typography>
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{ display: "block", mt: 0.5, opacity: 0.7 }}
-                        >
-                          {new Date(msg.created_at).toLocaleTimeString()}
-                        </Typography>
-                      </Box>
-
-                      {/* Avatar and delete for own messages */}
-                      {isOwn && (
-                        <>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleDeleteMessage(msg.id)}
-                            sx={{
-                              opacity: 0.6,
-                              "&:hover": {
-                                backgroundColor: "#e74c3c",
-                                color: "white",
-                                opacity: 1,
-                              },
-                            }}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
+                        {/* Avatar for non-own messages */}
+                        {!isOwn && (
                           <Avatar
                             sx={{
                               width: 32,
@@ -1294,126 +1367,187 @@ export default function OrganizationPage() {
                           >
                             {getUserInitials(msg.user_id)}
                           </Avatar>
-                        </>
-                      )}
-                    </Box>
-                  );
-                })
-              )}
-            </CardContent>
-            <Divider />
-            <CardActions
-              sx={{
-                p: 2,
-                flexDirection: "column",
-                gap: 1,
-                backgroundColor: "white",
-              }}
-            >
-              {/* File Preview */}
-              {selectedFile && (
-                <Box
-                  sx={{
-                    width: "100%",
-                    p: 1,
-                    backgroundColor: "#f0f8ff",
-                    borderRadius: 1,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    border: "1px solid #e3f2fd",
-                  }}
-                >
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    📎 {selectedFile.name}
-                  </Typography>
-                  <IconButton
-                    size="small"
-                    onClick={() => setSelectedFile(null)}
-                    sx={{
-                      "&:hover": {
-                        backgroundColor: "#e74c3c",
-                        color: "white",
-                      },
-                    }}
-                  >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </Box>
-              )}
+                        )}
 
-              {/* Message Input Row */}
-              <Box
+                        {/* Message Bubble */}
+                        <Box
+                          sx={{
+                            p: 2,
+                            maxWidth: "70%",
+                            width: "auto",
+                            backgroundColor:
+                              userColors[msg.user_id] ?? "#e0e0e0",
+                            color: "#2c3e50",
+                            borderRadius: isOwn
+                              ? "18px 18px 4px 18px"
+                              : "18px 18px 18px 4px",
+                            whiteSpace: "pre-wrap",
+                            wordBreak: "break-word",
+                            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                          }}
+                        >
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {msg.content}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ display: "block", mt: 0.5, opacity: 0.7 }}
+                          >
+                            {new Date(msg.created_at).toLocaleTimeString()}
+                          </Typography>
+                        </Box>
+
+                        {/* Avatar and delete for own messages */}
+                        {isOwn && (
+                          <>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleDeleteMessage(msg.id)}
+                              sx={{
+                                opacity: 0.6,
+                                "&:hover": {
+                                  backgroundColor: "#e74c3c",
+                                  color: "white",
+                                  opacity: 1,
+                                },
+                              }}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                            <Avatar
+                              sx={{
+                                width: 32,
+                                height: 32,
+                                backgroundColor:
+                                  userColors[msg.user_id] ?? "#bdbdbd",
+                                fontSize: "0.75rem",
+                                fontWeight: 600,
+                              }}
+                            >
+                              {getUserInitials(msg.user_id)}
+                            </Avatar>
+                          </>
+                        )}
+                      </Box>
+                    );
+                  })
+                )}
+              </CardContent>
+              <Divider />
+              <CardActions
                 sx={{
-                  display: "flex",
-                  width: "100%",
+                  p: 2,
+                  flexDirection: "column",
                   gap: 1,
-                  alignItems: "center",
+                  backgroundColor: "white",
                 }}
               >
-                <TextField
-                  fullWidth
-                  size="small"
-                  placeholder={
-                    selectedTopic
-                      ? "Napisz wiadomość..."
-                      : "Wybierz temat aby pisać wiadomości"
-                  }
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyPress={(e) =>
-                    e.key === "Enter" && selectedTopic && handleSendMessage()
-                  }
-                  disabled={!selectedTopic}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: "20px",
-                    },
-                  }}
-                />
-
-                {/* File Upload Button */}
-                <input
-                  accept="image/*,application/pdf,.doc,.docx,.txt"
-                  style={{ display: "none" }}
-                  id="file-upload"
-                  type="file"
-                  onChange={handleFileSelect}
-                />
-                <label htmlFor="file-upload">
-                  <IconButton
-                    component="span"
+                {/* File Preview */}
+                {selectedFile && (
+                  <Box
                     sx={{
-                      color: "#7f8c8d",
-                      "&:hover": {
-                        backgroundColor: "#ecf0f1",
-                        color: "#2c3e50",
-                      },
+                      width: "100%",
+                      p: 1,
+                      backgroundColor: "#f0f8ff",
+                      borderRadius: 1,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      border: "1px solid #e3f2fd",
                     }}
                   >
-                    <AttachFileIcon />
-                  </IconButton>
-                </label>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      📎 {selectedFile.name}
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      onClick={() => setSelectedFile(null)}
+                      sx={{
+                        "&:hover": {
+                          backgroundColor: "#e74c3c",
+                          color: "white",
+                        },
+                      }}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                )}
 
-                <Button
-                  variant="contained"
-                  onClick={handleSendMessage}
-                  disabled={!selectedTopic || !newMessage.trim()}
-                  startIcon={<SendIcon />}
+                {/* Message Input Row */}
+                <Box
                   sx={{
-                    borderRadius: "20px",
-                    textTransform: "none",
-                    fontWeight: 500,
-                    minWidth: "80px",
-                    backgroundColor: "#3498db",
-                    "&:hover": { backgroundColor: "#2980b9" },
+                    display: "flex",
+                    width: "100%",
+                    gap: 1,
+                    alignItems: "center",
                   }}
                 >
-                  Wyślij
-                </Button>
-              </Box>
-            </CardActions>
-          </Card>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    placeholder={
+                      selectedTopic
+                        ? "Napisz wiadomość..."
+                        : "Wybierz temat aby pisać wiadomości"
+                    }
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyPress={(e) =>
+                      e.key === "Enter" && selectedTopic && handleSendMessage()
+                    }
+                    disabled={!selectedTopic}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: "20px",
+                      },
+                    }}
+                  />
+
+                  {/* File Upload Button */}
+                  <input
+                    accept="image/*,application/pdf,.doc,.docx,.txt"
+                    style={{ display: "none" }}
+                    id="file-upload"
+                    type="file"
+                    onChange={handleFileSelect}
+                  />
+                  <label htmlFor="file-upload">
+                    <IconButton
+                      component="span"
+                      sx={{
+                        color: "#7f8c8d",
+                        "&:hover": {
+                          backgroundColor: "#ecf0f1",
+                          color: "#2c3e50",
+                        },
+                      }}
+                    >
+                      <AttachFileIcon />
+                    </IconButton>
+                  </label>
+
+                  <Button
+                    variant="contained"
+                    onClick={handleSendMessage}
+                    disabled={!selectedTopic || !newMessage.trim()}
+                    startIcon={<SendIcon />}
+                    sx={{
+                      borderRadius: "20px",
+                      textTransform: "none",
+                      fontWeight: 500,
+                      minWidth: "80px",
+                      backgroundColor: "#3498db",
+                      "&:hover": { backgroundColor: "#2980b9" },
+                    }}
+                  >
+                    Wyślij
+                  </Button>
+                </Box>
+              </CardActions>
+            </Card>
+          </Box>
         </Box>
       </Box>
     </Box>

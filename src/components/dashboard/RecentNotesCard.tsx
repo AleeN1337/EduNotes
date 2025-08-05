@@ -40,7 +40,12 @@ export default function RecentNotesCard() {
         >
           <Typography
             variant="h6"
-            sx={{ fontWeight: 600, display: "flex", alignItems: "center", gap: 1 }}
+            sx={{
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+            }}
           >
             📝 Najnowsze notatki
           </Typography>
@@ -52,7 +57,13 @@ export default function RecentNotesCard() {
           {notes.slice(-3).map((note) => (
             <Box
               key={note.id}
-              sx={{ p: 2, border: "1px solid", borderColor: "divider", borderRadius: 2, '&:hover': { backgroundColor: 'action.hover' } }}
+              sx={{
+                p: 2,
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: 2,
+                "&:hover": { backgroundColor: "action.hover" },
+              }}
             >
               <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                 {note.title}

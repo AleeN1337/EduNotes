@@ -104,9 +104,15 @@ export default function QuickStatsCards() {
               color="warning.main"
               sx={{ fontWeight: 700 }}
             >
-            {`${String(Math.floor(elapsedSeconds / 3600)).padStart(2, '0')}:` +
-             `${String(Math.floor((elapsedSeconds % 3600) / 60)).padStart(2, '0')}:` +
-             `${String(elapsedSeconds % 60).padStart(2, '0')}`}
+              {`${String(Math.floor(elapsedSeconds / 3600)).padStart(
+                2,
+                "0"
+              )}:` +
+                `${String(Math.floor((elapsedSeconds % 3600) / 60)).padStart(
+                  2,
+                  "0"
+                )}:` +
+                `${String(elapsedSeconds % 60).padStart(2, "0")}`}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Czas spędzony
