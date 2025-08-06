@@ -18,6 +18,7 @@ import {
 } from "@/lib/profileApiSimple";
 import { User } from "@/types";
 import { useRouter } from "next/navigation";
+import { Typewriter } from "react-simple-typewriter";
 import api from "@/lib/api";
 
 import {
@@ -615,7 +616,14 @@ export default function Dashboard() {
               fontSize: { xs: "1.75rem", sm: "2rem", md: "2.25rem" },
             }}
           >
-            Witaj ponownie, {user.email.split("@")[0]}! 👋
+            <Typewriter
+              words={[`Witaj ponownie, ${user.email.split("@")[0]}! `]}
+              cursor
+              cursorStyle="|"
+              loop={false}
+              typeSpeed={100}
+              delaySpeed={1000}
+            />
           </Typography>
           <Typography
             variant="body1"
