@@ -16,6 +16,7 @@ export default function OrganizationsSection({
   userOrganizations,
   onCreateClick,
   onOrganizationClick,
+  onLeaveOrganization,
   orgStats,
 }: OrganizationsSectionProps) {
   const router = useRouter();
@@ -171,21 +172,44 @@ export default function OrganizationsSection({
                     />
                   </Box>
 
-                  <Button
-                    variant="outlined"
-                    fullWidth
-                    size="small"
-                    sx={{
-                      borderRadius: 2,
-                      fontWeight: 500,
-                      "&:hover": {
-                        background: "primary.main",
-                        color: "white",
-                      },
-                    }}
+                  <Box
+                    sx={{ display: "flex", flexDirection: "column", gap: 1 }}
                   >
-                    Otwórz panel grupy →
-                  </Button>
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      size="small"
+                      onClick={() => onOrganizationClick(org.id)}
+                      sx={{
+                        borderRadius: 2,
+                        fontWeight: 500,
+                        textTransform: "none",
+                        "&:hover": {
+                          background: "primary.main",
+                          color: "white",
+                        },
+                      }}
+                    >
+                      Otwórz panel grupy →
+                    </Button>
+                    <Button
+                      variant="text"
+                      fullWidth
+                      size="small"
+                      color="error"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onLeaveOrganization(org.id);
+                      }}
+                      sx={{
+                        borderRadius: 2,
+                        textTransform: "none",
+                        fontWeight: 500,
+                      }}
+                    >
+                      Opuść organizację
+                    </Button>
+                  </Box>
                 </CardContent>
               </Card>
             ))}

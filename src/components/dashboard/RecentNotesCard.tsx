@@ -1,6 +1,15 @@
 "use client";
 
-import { Box, Card, CardContent, Typography, Button } from "@mui/material";
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  IconButton,
+} from "@mui/material";
+import ThumbUpIcon from "@mui/icons-material/ThumbUp";
+import ThumbDownIcon from "@mui/icons-material/ThumbDown";
 
 import React, { useState, useEffect } from "react";
 import api from "@/lib/api";
@@ -8,6 +17,9 @@ import { Note } from "@/types";
 
 export default function RecentNotesCard() {
   const [notes, setNotes] = useState<Note[]>([]);
+  // ratings per note id, including counts
+  type Rating = { liked: boolean; disliked: boolean; likes: number; dislikes: number };
+  const [ratings, setRatings] = useState<Record<string, Rating>>({});
 
   useEffect(() => {
     const loadNotes = async () => {
@@ -25,6 +37,23 @@ export default function RecentNotesCard() {
       }
     };
     loadNotes();
+  }, []);
+  // load ratings
+  useEffect(() => {
+    try {
+      const stored: Record<string, Rating> = JSON.parse(localStorage.getItem("noteRatings") || "{}");
+      // initialize missing counts
+      const normalized: Record<string, Rating> = {};
+      Object.entries(stored).forEach(([id, r]) => {
+        normalized[id] = {
+          liked: r.liked,
+          disliked: r.disliked,
+          likes: typeof r.likes === 'number' ? r.likes : 0,
+          dislikes: typeof r.dislikes === 'number' ? r.dislikes : 0,
+        };
+      });
+      setRatings(normalized);
+    } catch {}
   }, []);
 
   return (
@@ -74,6 +103,75 @@ export default function RecentNotesCard() {
               <Typography variant="caption" color="text.secondary">
                 {new Date(note.created_at).toLocaleString()}
               </Typography>
+              <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
+                {/* Like button and count (only one note at a time) */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <IconButton
+                    size="small"
+                    color={ratings[note.id]?.liked ? 'primary' : 'default'}
+                    onClick={() => {
+                      setRatings(prev => {
+                        const newRatings: Record<string, any> = {};
+                        notes.slice(-3).forEach(n => {
+                          const curr = prev[n.id] || { liked: false, disliked: false, likes: 0, dislikes: 0 };
+                          if (n.id === note.id) {
+                            let { liked, disliked, likes, dislikes } = curr;
+                            if (!liked) {
+                              likes++;
+                              liked = true;
+                              if (disliked) { dislikes--; disliked = false; }
+                            } else {
+                              likes--; liked = false;
+                            }
+                            newRatings[n.id] = { liked, disliked, likes, dislikes };
+                          } else {
+                            // clear other likes/dislikes
+                            newRatings[n.id] = { ...curr, liked: false, disliked: false };
+                          }
+                        });
+                        localStorage.setItem('noteRatings', JSON.stringify(newRatings));
+                        return newRatings;
+                      });
+                    }}
+                  >
+                    <ThumbUpIcon fontSize="small" />
+                  </IconButton>
+                  <Typography variant="caption">{ratings[note.id]?.likes || 0}</Typography>
+                </Box>
+                {/* Dislike button and count (only one note at a time) */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <IconButton
+                    size="small"
+                    color={ratings[note.id]?.disliked ? 'error' : 'default'}
+                    onClick={() => {
+                      setRatings(prev => {
+                        const newRatings: Record<string, any> = {};
+                        notes.slice(-3).forEach(n => {
+                          const curr = prev[n.id] || { liked: false, disliked: false, likes: 0, dislikes: 0 };
+                          if (n.id === note.id) {
+                            let { liked, disliked, likes, dislikes } = curr;
+                            if (!disliked) {
+                              dislikes++;
+                              disliked = true;
+                              if (liked) { likes--; liked = false; }
+                            } else {
+                              dislikes--; disliked = false;
+                            }
+                            newRatings[n.id] = { liked, disliked, likes, dislikes };
+                          } else {
+                            newRatings[n.id] = { ...curr, liked: false, disliked: false };
+                          }
+                        });
+                        localStorage.setItem('noteRatings', JSON.stringify(newRatings));
+                        return newRatings;
+                      });
+                    }}
+                  >
+                    <ThumbDownIcon fontSize="small" />
+                  </IconButton>
+                  <Typography variant="caption">{ratings[note.id]?.dislikes || 0}</Typography>
+                </Box>
+              </Box>
             </Box>
           ))}
         </Box>

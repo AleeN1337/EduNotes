@@ -1,4 +1,5 @@
 "use client";
+import React, { useState } from "react";
 
 import {
   AppBar,
@@ -7,6 +8,9 @@ import {
   Box,
   Button,
   IconButton,
+  Badge,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 import {
   Person as PersonIcon,
@@ -15,17 +19,33 @@ import {
 } from "@mui/icons-material";
 import { User } from "@/types";
 
+interface Invite {
+  id: number;
+  organization_id: number;
+  organization_name: string;
+  inviter: string;
+}
 interface DashboardHeaderProps {
   user: User;
   onProfileClick: () => void;
   onLogout: () => void;
+  invites: Invite[];
+  onAcceptInvite: (id: number) => void;
+  onDeclineInvite: (id: number) => void;
 }
 
 export default function DashboardHeader({
   user,
   onProfileClick,
   onLogout,
+  invites,
+  onAcceptInvite,
+  onDeclineInvite,
 }: DashboardHeaderProps) {
+  const [anchorInv, setAnchorInv] = useState<null | HTMLElement>(null);
+  const handleOpenInv = (e: React.MouseEvent<HTMLElement>) =>
+    setAnchorInv(e.currentTarget);
+  const handleCloseInv = () => setAnchorInv(null);
   return (
     <AppBar
       position="static"
@@ -70,19 +90,56 @@ export default function DashboardHeader({
           >
             Profil
           </Button>
-          <Button
-            color="inherit"
-            startIcon={<NotificationsIcon />}
-            sx={{
-              "&:hover": {
-                backgroundColor: "rgba(255, 255, 255, 0.15)",
-                transform: "translateY(-1px)",
-                transition: "all 0.2s ease",
-              },
-            }}
+          {/* Notification invites */}
+          <IconButton color="inherit" onClick={handleOpenInv} sx={{ ml: 1 }}>
+            <Badge badgeContent={invites.length} color="error">
+              <NotificationsIcon />
+            </Badge>
+          </IconButton>
+          <Menu
+            anchorEl={anchorInv}
+            open={Boolean(anchorInv)}
+            onClose={handleCloseInv}
           >
-            Powiadomienia
-          </Button>
+            {invites.length === 0 && <MenuItem>Brak nowych zaproszeń</MenuItem>}
+            {invites.map((inv) => (
+              <MenuItem
+                key={inv.id}
+                sx={{ flexDirection: "column", alignItems: "flex-start" }}
+              >
+                <Typography variant="body2">
+                  Zaproszenie do: <strong>{inv.organization_name}</strong>
+                </Typography>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ mb: 1 }}
+                >
+                  Zaproszony przez: {inv.inviter}
+                </Typography>
+                <Box sx={{ display: "flex", gap: 1 }}>
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      onAcceptInvite(inv.id);
+                      handleCloseInv();
+                    }}
+                  >
+                    Akceptuj
+                  </Button>
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      onDeclineInvite(inv.id);
+                      handleCloseInv();
+                    }}
+                  >
+                    Odrzuć
+                  </Button>
+                </Box>
+              </MenuItem>
+            ))}
+          </Menu>
           <Button
             color="inherit"
             onClick={onLogout}

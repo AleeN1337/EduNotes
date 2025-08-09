@@ -48,5 +48,6 @@ export interface OrganizationsSectionProps {
   userOrganizations: UserOrganization[];
   onCreateClick: () => void;
   onOrganizationClick: (orgId: string) => void;
+  onLeaveOrganization: (orgId: string) => void;
   orgStats: Record<string, { members: number; channels: number }>;
 }

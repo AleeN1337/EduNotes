@@ -33,12 +33,6 @@ import {
   NotificationSnackbar,
   type NotificationState,
 } from "./dashboard/";
-import {
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
-} from "@mui/material";
 
 export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
@@ -70,7 +64,7 @@ export default function Dashboard() {
     severity: "success",
   });
 
-  // Stan dla zaproszeń
+  // Stan dla zaproszeń (raw)
   const [myInvites, setMyInvites] = useState<any[]>([]);
   const [orgStats, setOrgStats] = useState<
     Record<string, { members: number; channels: number }>
@@ -188,6 +182,32 @@ export default function Dashboard() {
   useEffect(() => {
     if (isClient && user) loadMyInvites();
   }, [isClient, user]);
+
+  // Enriched invites for header (with org name and inviter)
+  const headerInvites = myInvites.map((inv) => ({
+    id: inv.id,
+    organization_id: inv.organization_id,
+    organization_name:
+      userOrganizations.find((org) => org.id === inv.organization_id)
+        ?.organization_name || "",
+    inviter: inv.email,
+  }));
+
+  // Accept or decline invitation
+  const acceptInvite = async (id: number) => {
+    try {
+      await api.post(`/organization-invitations/${id}/accept`);
+      setMyInvites((prev) => prev.filter((i) => i.id !== id));
+      // refresh organizations list
+      loadOrganizations();
+    } catch {}
+  };
+  const declineInvite = async (id: number) => {
+    try {
+      await api.post(`/organization-invitations/${id}/decline`);
+      setMyInvites((prev) => prev.filter((i) => i.id !== id));
+    } catch {}
+  };
 
   const handleLogout = async () => {
     try {
@@ -368,20 +388,10 @@ export default function Dashboard() {
       }
     } catch (error: any) {
       console.error("Error creating organization:", error);
-      if (
-        error.response?.status === 409 ||
-        error.response?.data?.message?.includes("already exists") ||
-        error.response?.data?.message?.includes("już istnieje")
-      ) {
-        showNotification(
-          `Organizacja o nazwie "${newOrgName.trim()}" już istnieje! 🚫`,
-          "error"
-        );
-      } else {
-        const errMsg = error.response?.data?.message || error.message;
-        showNotification(`Błąd tworzenia organizacji: ${errMsg}`, "error");
-      }
-    } finally {
+      showNotification(
+        error.response?.data?.message || "Błąd podczas tworzenia organizacji",
+        "error"
+      );
       setCreatingOrg(false);
     }
   };
@@ -540,7 +550,7 @@ export default function Dashboard() {
       await api.post(`/organization-invitations/${id}/accept`);
       loadMyInvites();
       // przeładuj organizacje
-      loadProfileData();
+      loadOrganizations();
     } catch (err) {
       console.error("Error accepting invite:", err);
     }
@@ -551,6 +561,21 @@ export default function Dashboard() {
       loadMyInvites();
     } catch (err) {
       console.error("Error declining invite:", err);
+    }
+  };
+  // Opuszczenie organizacji przez użytkownika
+  const handleLeaveOrganization = async (orgId: string) => {
+    if (!user) return;
+    try {
+      // Use direct delete by IDs endpoint
+      await api.delete(`/organization_users/${orgId}/${user.id}`);
+      // Remove from local state immediately
+      setUserOrganizations((prev) => prev.filter((o) => o.id !== orgId));
+      showNotification("Opuściłeś organizację", "success");
+      await loadOrganizations();
+    } catch (err) {
+      console.error("Error leaving organization:", err);
+      showNotification("Błąd przy opuszczaniu organizacji", "error");
     }
   };
 
@@ -592,9 +617,12 @@ export default function Dashboard() {
   return (
     <div>
       <DashboardHeader
-        user={user}
-        onProfileClick={handleProfileClick}
+        user={user!}
+        onProfileClick={() => setProfileDrawerOpen(true)}
         onLogout={handleLogout}
+        invites={headerInvites}
+        onAcceptInvite={acceptInvite}
+        onDeclineInvite={declineInvite}
       />
 
       <Container
@@ -647,55 +675,21 @@ export default function Dashboard() {
           {/* Left Column */}
           <Box sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <RecentNotesCard />
-            {myInvites.length > 0 ? (
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" sx={{ mb: 2 }}>
-                    Masz zaproszenia
-                  </Typography>
-                  <List>
-                    {myInvites.map((inv) => (
-                      <ListItem key={inv.id}>
-                        <ListItemText
-                          primary={`Organizacja ${inv.organization_id} (rola: ${inv.role})`}
-                          secondary={`Zaproszony: ${new Date(
-                            inv.created_at
-                          ).toLocaleDateString()}`}
-                        />
-                        <ListItemSecondaryAction>
-                          <Button
-                            size="small"
-                            onClick={() => handleAccept(inv.id)}
-                            sx={{ mr: 1 }}
-                          >
-                            Akceptuj
-                          </Button>
-                          <Button
-                            size="small"
-                            color="error"
-                            onClick={() => handleDecline(inv.id)}
-                          >
-                            Odrzuć
-                          </Button>
-                        </ListItemSecondaryAction>
-                      </ListItem>
-                    ))}
-                  </List>
-                </CardContent>
-              </Card>
-            ) : (
-              <OrganizationsSection
-                userOrganizations={userOrganizations}
-                onCreateClick={handleOrganizationsClick}
-                onOrganizationClick={handleOrganizationClick}
-                orgStats={orgStats}
-              />
-            )}
+            {/* Organizations Section */}
+            <OrganizationsSection
+              userOrganizations={userOrganizations}
+              onCreateClick={handleOrganizationsClick}
+              onOrganizationClick={handleOrganizationClick}
+              onLeaveOrganization={handleLeaveOrganization}
+              orgStats={orgStats}
+            />
           </Box>
 
           {/* Right Column */}
           <Box sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <UpcomingTasksCard />
+            <UpcomingTasksCard
+              orgIds={userOrganizations.map((o) => o.id.toString())}
+            />
             <CalendarWidget />
           </Box>
         </Box>
