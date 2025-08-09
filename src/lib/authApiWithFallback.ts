@@ -98,42 +98,27 @@ export class AuthAPI {
     data: RegisterForm
   ): Promise<ApiResponse<User & { token: string }>> {
     try {
-      // Użyj prawdziwego API dla rejestracji (działa!)
+      // Wywołaj prawdziwe API rejestracji
       const response = await fetch("/api/auth/register", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-
       const result = await response.json();
-
-      if (!response.ok) {
+      if (!response.ok || !result.success) {
         throw new Error(result.message || "Błąd rejestracji");
       }
-
-      // Po rejestracji automatycznie zaloguj (mock token)
-      const newUser: User = {
-        id: result.user?.user_id?.toString() || "999",
-        email: data.email,
-        username: data.username,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      localStorage.setItem("auth_token", MOCK_TOKEN);
-      localStorage.setItem("user", JSON.stringify(newUser));
-
-      // Dodaj również do cookies
-      document.cookie = `auth_token=${MOCK_TOKEN}; path=/; max-age=86400; samesite=lax`;
-
+      // Użyj tokena i danych użytkownika z odpowiedzi
+      const token = result.token as string;
+      const backendUser = result.user as User;
+      // Zapisz w localStorage i ciasteczkach
+      localStorage.setItem("auth_token", token);
+      localStorage.setItem("user", JSON.stringify(backendUser));
+      document.cookie = `auth_token=${token}; path=/; max-age=86400; samesite=lax`;
       return {
         success: true,
-        data: { ...newUser, token: MOCK_TOKEN },
-        message: "Rejestracja przebiegła pomyślnie",
+        data: { ...backendUser, token },
+        message: result.message || "Rejestracja przebiegła pomyślnie",
       };
     } catch (error: any) {
       throw new Error(error.message || "Błąd rejestracji");
@@ -162,7 +147,9 @@ export class AuthAPI {
         try {
           const user = JSON.parse(userJson);
           console.log("AuthAPI: Using stored user data:", user);
-          return user;
+          if (user) {
+            return user;
+          }
         } catch (parseError) {
           console.warn("Failed to parse user from localStorage:", parseError);
         }

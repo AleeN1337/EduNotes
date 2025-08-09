@@ -53,9 +53,7 @@ export async function POST(request: NextRequest) {
     let userData = null;
     if (data.access_token) {
       try {
-        console.log(
-          "Fetching user organizations from /organization_users/me..."
-        );
+        console.log("Fetching user organizations from /organization_users/me...");
         const orgUsersResponse = await fetch(
           `${process.env.BACKEND_URL}/organization_users/me`,
           {
@@ -66,15 +64,12 @@ export async function POST(request: NextRequest) {
             },
           }
         );
-
         if (orgUsersResponse.ok) {
           const orgUsers = await orgUsersResponse.json();
           console.log("Organization users data:", orgUsers);
-
-          // Jeśli użytkownik ma organizacje, pobierz dane użytkownika
           if (orgUsers.success && orgUsers.data && orgUsers.data.length > 0) {
+            // If user has organizations, fetch full user data
             const userId = orgUsers.data[0].user_id;
-
             try {
               const userResponse = await fetch(
                 `${process.env.BACKEND_URL}/users/${userId}`,
@@ -86,36 +81,29 @@ export async function POST(request: NextRequest) {
                   },
                 }
               );
-
               if (userResponse.ok) {
                 const userInfo = await userResponse.json();
-                const rawUserData = userInfo.data;
-
+                const raw = userInfo.data;
                 userData = {
-                  id: rawUserData.user_id?.toString(),
-                  email: rawUserData.email,
-                  username: rawUserData.username,
-                  firstName: rawUserData.first_name,
-                  lastName: rawUserData.last_name,
-                  avatar: rawUserData.avatar_url,
-                  score: rawUserData.score,
-                  rank: rawUserData.rank,
+                  id: raw.user_id?.toString(),
+                  email: raw.email,
+                  username: raw.username,
+                  firstName: raw.first_name,
+                  lastName: raw.last_name,
+                  avatar: raw.avatar_url,
+                  score: raw.score,
+                  rank: raw.rank,
                   createdAt: new Date(),
                   updatedAt: new Date(),
                 };
                 console.log("Transformed user data:", userData);
               }
-            } catch (userFetchError) {
-              console.warn(
-                "Failed to fetch specific user data:",
-                userFetchError
-              );
-            }
+            } catch {}
           } else {
-            // Użytkownik nie ma organizacji, stwórz podstawowe dane z email
+            // No organizations - default user data
             userData = {
-              id: "temp", // Będzie zaktualizowane gdy użytkownik dołączy do organizacji
-              email: email,
+              id: "temp",
+              email,
               username: email.split("@")[0],
               firstName: "",
               lastName: "",
@@ -126,6 +114,20 @@ export async function POST(request: NextRequest) {
               updatedAt: new Date(),
             };
           }
+        } else {
+          // Treat non-OK as no organizations
+          userData = {
+            id: "temp",
+            email,
+            username: email.split("@")[0],
+            firstName: "",
+            lastName: "",
+            avatar: null,
+            score: 0,
+            rank: "niekompetentny",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
         }
       } catch (orgFetchError) {
         console.warn("Failed to fetch organization data:", orgFetchError);

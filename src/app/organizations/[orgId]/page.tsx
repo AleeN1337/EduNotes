@@ -25,12 +25,6 @@ import {
   Input,
   Avatar,
   IconButton,
-  Fab,
-  Fade,
-  SpeedDial,
-  SpeedDialAction,
-  SpeedDialIcon,
-  Tooltip,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
@@ -105,10 +99,9 @@ export default function OrganizationPage() {
   const [newTopicName, setNewTopicName] = useState("");
   const [newMessage, setNewMessage] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  // ratings per message id, including counts
-  type Rating = { liked: boolean; disliked: boolean; likes: number; dislikes: number };
-  const [messageRatings, setMessageRatings] = useState<Record<string, Rating>>({});
-  const [openRatingMenu, setOpenRatingMenu] = useState<string | null>(null);
+  const [messageRatings, setMessageRatings] = useState<
+    Record<string, { liked: boolean; disliked: boolean }>
+  >({});
   const [activeTab, setActiveTab] = useState(0);
   const [addingTopicToChannel, setAddingTopicToChannel] = useState<
     string | null
@@ -718,19 +711,10 @@ export default function OrganizationPage() {
 
   // Get current user ID from localStorage
   useEffect(() => {
-    // load message ratings and normalize counts
+    // load message ratings
     try {
-      const stored: Record<string, Rating> = JSON.parse(localStorage.getItem("messageRatings") || "{}");
-      const normalized: Record<string, Rating> = {};
-      Object.entries(stored).forEach(([id, r]) => {
-        normalized[id] = {
-          liked: r.liked,
-          disliked: r.disliked,
-          likes: typeof r.likes === 'number' ? r.likes : 0,
-          dislikes: typeof r.dislikes === 'number' ? r.dislikes : 0,
-        };
-      });
-      setMessageRatings(normalized);
+      const stored = JSON.parse(localStorage.getItem("messageRatings") || "{}");
+      setMessageRatings(stored);
     } catch {}
     const userJson = localStorage.getItem("user");
     if (userJson) {
@@ -743,18 +727,6 @@ export default function OrganizationPage() {
       }
     }
   }, []);
-
-  // Close rating menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = () => {
-      setOpenRatingMenu(null);
-    };
-    
-    if (openRatingMenu) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
-    }
-  }, [openRatingMenu]);
 
   // Load pending invitations
   const loadPendingInvites = async () => {
@@ -1344,13 +1316,8 @@ export default function OrganizationPage() {
                 sx={{
                   flex: 1,
                   overflowY: "auto",
-                  pt: 2,
-                  pb: 2,
-                  backgroundColor: "#f8f9fa",
-                  backgroundImage: `
-                    radial-gradient(circle at 1px 1px, rgba(0,0,0,0.03) 1px, transparent 0);
-                  `,
-                  backgroundSize: "20px 20px",
+                  pt: 1,
+                  backgroundColor: "#fafafa",
                 }}
               >
                 {!selectedTopic ? (
@@ -1384,245 +1351,165 @@ export default function OrganizationPage() {
                 ) : (
                   messages.map((msg) => {
                     const isOwn = String(msg.user_id) === currentUserId;
-                    const userInitials = getUserInitials(msg.user_id);
-                    const userColor = userColors[msg.user_id] ?? "#bdbdbd";
-                    const isRatingMenuOpen = openRatingMenu === msg.id;
-
                     return (
                       <Box
                         key={msg.id}
                         sx={{
                           width: "100%",
                           display: "flex",
-                          justifyContent: isOwn ? "flex-end" : "flex-start",
+                          justifyContent: isOwn ? "flex-start" : "flex-end",
                           alignItems: "flex-start",
-                          mb: 3,
-                          px: 1,
+                          mb: 2,
+                          gap: 1,
                         }}
                       >
-                        {/* Avatar for other users */}
+                        {/* Avatar for non-own messages */}
                         {!isOwn && (
                           <Avatar
                             sx={{
-                              width: 36,
-                              height: 36,
-                              backgroundColor: userColor,
-                              fontSize: "0.8rem",
-                              fontWeight: 700,
-                              mr: 1.5,
-                              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                              width: 32,
+                              height: 32,
+                              backgroundColor:
+                                userColors[msg.user_id] ?? "#bdbdbd",
+                              fontSize: "0.75rem",
+                              fontWeight: 600,
                             }}
                           >
-                            {userInitials}
+                            {getUserInitials(msg.user_id)}
                           </Avatar>
                         )}
 
-                        {/* Message Content Container */}
+                        {/* Message Bubble */}
                         <Box
                           sx={{
-                            position: "relative",
-                            maxWidth: "75%",
-                            minWidth: "200px",
+                            p: 2,
+                            maxWidth: "70%",
+                            width: "auto",
+                            backgroundColor:
+                              userColors[msg.user_id] ?? "#e0e0e0",
+                            color: "#2c3e50",
+                            borderRadius: isOwn
+                              ? "18px 18px 4px 18px"
+                              : "18px 18px 18px 4px",
+                            whiteSpace: "pre-wrap",
+                            wordBreak: "break-word",
+                            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
                           }}
                         >
-                          {/* Message Bubble */}
-                          <Box
-                            sx={{
-                              position: "relative",
-                              p: 2.5,
-                              backgroundColor: isOwn ? "#e3f2fd" : "white",
-                              color: "#2c3e50",
-                              borderRadius: "16px",
-                              boxShadow: "0 3px 12px rgba(0,0,0,0.08)",
-                              border: isOwn ? "none" : "1px solid #f0f0f0",
-                              "&:hover": {
-                                boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
-                              },
-                            }}
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {msg.content}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ display: "block", mt: 0.5, opacity: 0.7 }}
                           >
-                            <Typography 
-                              variant="body1" 
-                              sx={{ 
-                                fontWeight: 400,
-                                lineHeight: 1.5,
-                                whiteSpace: "pre-wrap",
-                                wordBreak: "break-word",
-                              }}
-                            >
-                              {msg.content}
-                            </Typography>
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                              sx={{ 
-                                display: "block", 
-                                mt: 1, 
-                                opacity: 0.8,
-                                fontSize: "0.75rem",
-                              }}
-                            >
-                              {new Date(msg.created_at).toLocaleTimeString("pl-PL", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </Typography>
-                          </Box>
-
-                          {/* Action Buttons Row */}
-                          <Box
-                            sx={{
-                              display: "flex",
-                              justifyContent: isOwn ? "flex-end" : "flex-start",
-                              alignItems: "center",
-                              mt: 1,
-                              gap: 1,
-                            }}
-                          >
-                            {/* Rating Button with floating menu */}
-                            <Box sx={{ position: "relative" }}>
-                              <Tooltip title="Oceń wiadomość">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => setOpenRatingMenu(
-                                    isRatingMenuOpen ? null : msg.id
-                                  )}
-                                  sx={{
-                                    backgroundColor: isRatingMenuOpen ? "#e3f2fd" : "transparent",
-                                    color: "#666",
-                                    "&:hover": {
-                                      backgroundColor: "#e3f2fd",
-                                      color: "#1976d2",
-                                    },
-                                    transition: "all 0.2s ease",
-                                  }}
-                                >
-                                  <AddIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-
-                              {/* Floating Rating Menu */}
-                              <Fade in={isRatingMenuOpen}>
-                                <Box
-                                  sx={{
-                                    position: "absolute",
-                                    bottom: "100%",
-                                    left: isOwn ? "auto" : 0,
-                                    right: isOwn ? 0 : "auto",
-                                    mb: 1,
-                                    display: isRatingMenuOpen ? "flex" : "none",
-                                    gap: 0.5,
-                                    backgroundColor: "white",
-                                    boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
-                                    borderRadius: "12px",
-                                    p: 0.5,
-                                    zIndex: 1000,
-                                  }}
-                                >
-                                  <Tooltip title="Polub">
-                                    <IconButton
-                                      size="small"
-                                      color={messageRatings[msg.id]?.liked ? "primary" : "default"}
-                                      onClick={() => {
-                                        setMessageRatings(prev => {
-                                          const curr = prev[msg.id] || { liked: false, disliked: false, likes: 0, dislikes: 0 };
-                                          let { liked, disliked, likes, dislikes } = curr;
-                                          if (!liked) {
-                                            likes++;
-                                            liked = true;
-                                            if (disliked) { dislikes--; disliked = false; }
-                                          } else {
-                                            likes--; liked = false;
-                                          }
-                                          const updated: Rating = { liked, disliked, likes, dislikes };
-                                          const all = { ...prev, [msg.id]: updated };
-                                          localStorage.setItem('messageRatings', JSON.stringify(all));
-                                          return all;
-                                        });
-                                        setOpenRatingMenu(null);
-                                      }}
-                                      sx={{
-                                        "&:hover": {
-                                          backgroundColor: "#e8f5e8",
-                                          color: "#4caf50",
-                                        },
-                                      }}
-                                    >
-                                      <ThumbUpIcon fontSize="small" />
-                                    </IconButton>
-                                  </Tooltip>
-                                  <Tooltip title="Nie lubię">
-                                    <IconButton
-                                      size="small"
-                                      color={messageRatings[msg.id]?.disliked ? "error" : "default"}
-                                      onClick={() => {
-                                        setMessageRatings(prev => {
-                                          const curr = prev[msg.id] || { liked: false, disliked: false, likes: 0, dislikes: 0 };
-                                          let { liked, disliked, likes, dislikes } = curr;
-                                          if (!disliked) {
-                                            dislikes++;
-                                            disliked = true;
-                                            if (liked) { likes--; liked = false; }
-                                          } else {
-                                            dislikes--; disliked = false;
-                                          }
-                                          const updated: Rating = { liked, disliked, likes, dislikes };
-                                          const all = { ...prev, [msg.id]: updated };
-                                          localStorage.setItem('messageRatings', JSON.stringify(all));
-                                          return all;
-                                        });
-                                        setOpenRatingMenu(null);
-                                      }}
-                                      sx={{
-                                        "&:hover": {
-                                          backgroundColor: "#ffebee",
-                                          color: "#f44336",
-                                        },
-                                      }}
-                                    >
-                                      <ThumbDownIcon fontSize="small" />
-                                    </IconButton>
-                                  </Tooltip>
-                                </Box>
-                              </Fade>
-                            </Box>
-
-                            {/* Delete Button for own messages */}
-                            {isOwn && (
-                              <Tooltip title="Usuń wiadomość">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleDeleteMessage(msg.id)}
-                                  sx={{
-                                    color: "#999",
-                                    "&:hover": {
-                                      backgroundColor: "#ffebee",
-                                      color: "#f44336",
-                                    },
-                                    transition: "all 0.2s ease",
-                                  }}
-                                >
-                                  <DeleteIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                            )}
-                          </Box>
+                            {new Date(msg.created_at).toLocaleTimeString()}
+                          </Typography>
                         </Box>
 
-                        {/* Avatar for own messages */}
-                        {isOwn && (
-                          <Avatar
-                            sx={{
-                              width: 36,
-                              height: 36,
-                              backgroundColor: userColor,
-                              fontSize: "0.8rem",
-                              fontWeight: 700,
-                              ml: 1.5,
-                              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                        {/* Rating buttons */}
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: isOwn ? "flex-start" : "flex-end",
+                            gap: 0.5,
+                            mt: 0.5,
+                          }}
+                        >
+                          <IconButton
+                            size="small"
+                            color={
+                              messageRatings[msg.id]?.liked
+                                ? "primary"
+                                : "default"
+                            }
+                            onClick={() => {
+                              setMessageRatings((prev) => {
+                                const curr = prev[msg.id] || {
+                                  liked: false,
+                                  disliked: false,
+                                };
+                                const updated = {
+                                  liked: !curr.liked,
+                                  disliked: curr.liked
+                                    ? curr.disliked
+                                    : curr.disliked,
+                                };
+                                const newAll = { ...prev, [msg.id]: updated };
+                                localStorage.setItem(
+                                  "messageRatings",
+                                  JSON.stringify(newAll)
+                                );
+                                return newAll;
+                              });
                             }}
                           >
-                            {userInitials}
-                          </Avatar>
+                            <ThumbUpIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            color={
+                              messageRatings[msg.id]?.disliked
+                                ? "error"
+                                : "default"
+                            }
+                            onClick={() => {
+                              setMessageRatings((prev) => {
+                                const curr = prev[msg.id] || {
+                                  liked: false,
+                                  disliked: false,
+                                };
+                                const updated = {
+                                  disliked: !curr.disliked,
+                                  liked: curr.disliked
+                                    ? curr.liked
+                                    : curr.liked,
+                                };
+                                const newAll = { ...prev, [msg.id]: updated };
+                                localStorage.setItem(
+                                  "messageRatings",
+                                  JSON.stringify(newAll)
+                                );
+                                return newAll;
+                              });
+                            }}
+                          >
+                            <ThumbDownIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
+
+                        {/* Avatar and delete for own messages */}
+                        {isOwn && (
+                          <>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleDeleteMessage(msg.id)}
+                              sx={{
+                                opacity: 0.6,
+                                "&:hover": {
+                                  backgroundColor: "#e74c3c",
+                                  color: "white",
+                                  opacity: 1,
+                                },
+                              }}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                            <Avatar
+                              sx={{
+                                width: 32,
+                                height: 32,
+                                backgroundColor:
+                                  userColors[msg.user_id] ?? "#bdbdbd",
+                                fontSize: "0.75rem",
+                                fontWeight: 600,
+                              }}
+                            >
+                              {getUserInitials(msg.user_id)}
+                            </Avatar>
+                          </>
                         )}
                       </Box>
                     );

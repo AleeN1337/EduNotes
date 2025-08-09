@@ -300,18 +300,38 @@ export default function Dashboard() {
         await Promise.all(
           orgs.map(async (org) => {
             try {
+              // Pobierz członków organizacji
+              const membersPromise = api.get(`/organization_users/${org.id}`).catch(err => {
+                if (err.response?.status === 404) {
+                  console.log(`Members endpoint not available for org ${org.id}`);
+                  return { data: [] };
+                }
+                throw err;
+              });
+
+              // Pobierz kanały organizacji
+              const channelsPromise = api.get(
+                `/channels/channels_in_organization?organization_id=${org.id}`
+              ).catch(err => {
+                if (err.response?.status === 404) {
+                  console.log(`Channels endpoint not available for org ${org.id}`);
+                  return { data: [] };
+                }
+                throw err;
+              });
+
               const [membersRes, channelsRes] = await Promise.all([
-                api.get(`/organization_users/${org.id}`),
-                api.get(
-                  `/channels/channels_in_organization?organization_id=${org.id}`
-                ),
+                membersPromise,
+                channelsPromise,
               ]);
+
               const membersRaw = Array.isArray(membersRes.data)
                 ? membersRes.data
                 : membersRes.data.data ?? [];
               const channelsRaw = Array.isArray(channelsRes.data)
                 ? channelsRes.data
                 : channelsRes.data.data ?? [];
+              
               stats[org.id] = {
                 members: membersRaw.length,
                 channels: channelsRaw.length,
@@ -567,9 +587,20 @@ export default function Dashboard() {
   const handleLeaveOrganization = async (orgId: string) => {
     if (!user) return;
     try {
-      // Use direct delete by IDs endpoint
-      await api.delete(`/organization_users/${orgId}/${user.id}`);
-      // Remove from local state immediately
+      // Fetch membership record by organization and user IDs
+      const membershipRes = await api.get(
+        `/organization_users?organization_id=${orgId}&user_id=${user.id}`
+      );
+      const memberships = Array.isArray(membershipRes.data)
+        ? membershipRes.data
+        : membershipRes.data.data || [];
+      if (memberships.length === 0) {
+        throw new Error("Brak członkostwa organizacji");
+      }
+      const membershipId = memberships[0].id || memberships[0].membership_id;
+      // Delete membership by its ID
+      await api.delete(`/organization_users/${membershipId}`);
+      // Update UI state
       setUserOrganizations((prev) => prev.filter((o) => o.id !== orgId));
       showNotification("Opuściłeś organizację", "success");
       await loadOrganizations();

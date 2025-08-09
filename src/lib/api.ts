@@ -49,6 +49,7 @@ api.interceptors.response.use(
       // Niektóre 404 są oczekiwane i nie powinny być logowane jako błędy
       const expected404Endpoints = [
         "/organization_users/me", // Użytkownik może nie być członkiem żadnej organizacji
+        "/organization_users/", // Endpoint dla członków organizacji
         "/channels/channels_in_organization", // Organizacja może nie mieć kanałów
         "/topics/topics_in_channel", // Kanał może nie mieć tematów
         "/notes/notes_in_topic", // Temat może nie mieć notatek

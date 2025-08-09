@@ -108,7 +108,11 @@ export default function ProfileDrawer({
                   </Avatar>
                   <Box>
                     <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                      {profileData?.email?.split("@")[0] || "Użytkownik"}
+                      {profileData?.username ||
+                        (profileData?.firstName || profileData?.lastName
+                          ? `${profileData.firstName} ${profileData.lastName}`
+                          : profileData?.email?.split("@")[0]) ||
+                        "Użytkownik"}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       {profileData?.email}
