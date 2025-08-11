@@ -631,13 +631,32 @@ export default function Dashboard() {
   const handleLeaveOrganization = async (orgId: string) => {
     if (!user) return;
     try {
-      // Delete membership using contract DELETE /organization_users/{organization_id}/{user_id}
-      const uid = await resolveUserId();
-      const userIdNum = uid ?? Number(user.id);
+      // Najpierw znajdź poprawny user_id z /organization_users/me dla tej organizacji
+      let userIdNum: number | undefined;
+      try {
+        const meRes = await api.get(`/organization_users/me`);
+        const meArr = Array.isArray(meRes.data?.data) ? meRes.data.data : [];
+        const orgIdNum = Number(orgId);
+        const membership = meArr.find(
+          (m: any) => Number(m.organization_id) === orgIdNum
+        );
+        if (membership?.user_id) {
+          userIdNum = Number(membership.user_id);
+        }
+      } catch (e) {
+        console.warn("Dashboard: fallback to resolveUserId for leave", e);
+      }
+
+      if (!userIdNum) {
+        const uid = await resolveUserId();
+        userIdNum = uid ?? Number(user.id);
+      }
+
       if (!userIdNum || Number.isNaN(userIdNum)) {
         throw new Error("Nie udało się ustalić ID użytkownika");
       }
-      await api.delete(`/organization_users/${orgId}/${userIdNum}`);
+
+      await api.delete(`/organization_users/${Number(orgId)}/${userIdNum}`);
       // Update UI state
       setUserOrganizations((prev) => prev.filter((o) => o.id !== orgId));
       showNotification("Opuściłeś organizację", "success");

@@ -1,6 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import IconButton from "@mui/material/IconButton";
+// ...existing code...
+import AssignmentIcon from "@mui/icons-material/Assignment";
 import { useRouter, useParams } from "next/navigation";
 import {
   Box,
@@ -24,7 +31,7 @@ import {
   Chip,
   Input,
   Avatar,
-  IconButton,
+  // ...existing code...
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
@@ -41,7 +48,7 @@ import api from "@/lib/api";
 import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 import ThumbDownIcon from "@mui/icons-material/ThumbDown";
 import { UserOrganization } from "@/lib/profileApiSimple";
-
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 interface Channel {
   id: string;
   channel_name: string;
@@ -122,6 +129,7 @@ export default function OrganizationPage() {
     }
   });
   const [addingTask, setAddingTask] = useState(false);
+  const [taskError, setTaskError] = useState<string>("");
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskDate, setNewTaskDate] = useState("");
   const [newTaskTime, setNewTaskTime] = useState("");
@@ -147,6 +155,18 @@ export default function OrganizationPage() {
     const first = letters[id % 26];
     const second = letters[(id + 1) % 26];
     return `${first}${second}`;
+  };
+
+  // Delete task handler
+  const handleDeleteTask = (taskId: string) => {
+    if (!window.confirm("Czy na pewno chcesz usunąć to zadanie?")) return;
+    const updated = tasks.filter((t: Task) => t.id !== taskId);
+    setTasks(updated);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(updated));
+    } catch (err) {
+      console.error("Error saving tasks to localStorage:", err);
+    }
   };
 
   // Load organization info
@@ -811,7 +831,11 @@ export default function OrganizationPage() {
 
   // Add new task handler storing locally
   const handleAddTask = () => {
-    if (!newTaskTitle || !newTaskDate || !newTaskTime) return;
+    if (!newTaskTitle.trim() || !newTaskDate || !newTaskTime) {
+      setTaskError("Wszystkie pola są wymagane.");
+      return;
+    }
+    setTaskError("");
     const dueDateTime = `${newTaskDate}T${newTaskTime}`;
     const newTask: Task = {
       id: Date.now().toString(),
@@ -1209,71 +1233,136 @@ export default function OrganizationPage() {
           {/* Zadania/Egzaminów/Kolosów */}
           <Card sx={{ mb: 2, mx: 2 }}>
             <CardHeader
-              title="Zadania"
+              title={
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <AssignmentIcon sx={{ color: "#1976d2" }} />
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    Zadania
+                  </Typography>
+                </Box>
+              }
               action={
-                <Button
-                  size="small"
-                  startIcon={<AddIcon />}
+                <IconButton
+                  color="primary"
+                  aria-label="Dodaj zadanie"
                   onClick={() => setAddingTask(true)}
                 >
-                  Dodaj zadanie
-                </Button>
+                  <AddIcon />
+                </IconButton>
               }
             />
-            <Collapse in={addingTask} timeout="auto" unmountOnExit>
-              <Box
-                sx={{
-                  p: 2,
-                  display: "flex",
-                  gap: 1,
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                }}
+            <List sx={{ maxHeight: 200, overflow: "auto" }}>
+              {tasks.length === 0 ? (
+                <ListItem>
+                  <ListItemText
+                    primary={
+                      <Typography color="text.secondary">Brak zadań</Typography>
+                    }
+                  />
+                </ListItem>
+              ) : (
+                tasks.map((task) => {
+                  const due = new Date(task.due_date);
+                  const now = new Date();
+                  const msDiff = due.getTime() - now.getTime();
+                  const isSoon = msDiff < 1000 * 60 * 60 * 24 && msDiff > 0;
+                  return (
+                    <ListItem
+                      key={task.id}
+                      sx={{ py: 0.5 }}
+                      secondaryAction={
+                        <IconButton
+                          edge="end"
+                          aria-label="usuń"
+                          onClick={() => handleDeleteTask(task.id)}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      }
+                    >
+                      <ListItemIcon>
+                        <AssignmentIcon color="action" />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                            }}
+                          >
+                            <Typography sx={{ fontWeight: 500 }}>
+                              {task.title}
+                            </Typography>
+                            {isSoon && (
+                              <WarningAmberIcon
+                                sx={{ color: "error.main" }}
+                                titleAccess="Termin zadania mija w ciągu 24h!"
+                              />
+                            )}
+                          </Box>
+                        }
+                        secondary={due.toLocaleString()}
+                      />
+                    </ListItem>
+                  );
+                })
+              )}
+            </List>
+            {/* ...existing code... */}
+            {/* ...existing code... */}
+            {/* Dialog for adding task */}
+            <Dialog
+              open={addingTask}
+              onClose={() => setAddingTask(false)}
+              maxWidth="xs"
+              fullWidth
+            >
+              <DialogTitle>Dodaj nowe zadanie</DialogTitle>
+              <DialogContent
+                sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2 }}
               >
                 <TextField
                   label="Nazwa zadania"
-                  size="small"
                   value={newTaskTitle}
                   onChange={(e) => setNewTaskTitle(e.target.value)}
+                  autoFocus
+                  fullWidth
                 />
-                <TextField
-                  type="date"
-                  size="small"
-                  value={newTaskDate}
-                  onChange={(e) => setNewTaskDate(e.target.value)}
-                />
-                <TextField
-                  type="time"
-                  size="small"
-                  value={newTaskTime}
-                  onChange={(e) => setNewTaskTime(e.target.value)}
-                />
-                <Button
-                  variant="contained"
-                  size="small"
-                  onClick={handleAddTask}
-                >
-                  Dodaj
-                </Button>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => setAddingTask(false)}
-                >
+                <Box sx={{ display: "flex", gap: 2 }}>
+                  <TextField
+                    label="Data"
+                    type="date"
+                    value={newTaskDate}
+                    onChange={(e) => setNewTaskDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    fullWidth
+                  />
+                  <TextField
+                    label="Godzina"
+                    type="time"
+                    value={newTaskTime}
+                    onChange={(e) => setNewTaskTime(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    fullWidth
+                  />
+                </Box>
+                {taskError && (
+                  <Typography color="error" variant="body2">
+                    {taskError}
+                  </Typography>
+                )}
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={() => setAddingTask(false)} color="secondary">
                   Anuluj
                 </Button>
-              </Box>
-            </Collapse>
-            <List sx={{ maxHeight: 200, overflow: "auto" }}>
-              {tasks.map((task) => (
-                <ListItem key={task.id} sx={{ py: 0.5 }}>
-                  <ListItemText
-                    primary={task.title}
-                    secondary={new Date(task.due_date).toLocaleString()}
-                  />
-                </ListItem>
-              ))}
-            </List>
+                <Button onClick={handleAddTask} variant="contained">
+                  Dodaj
+                </Button>
+              </DialogActions>
+            </Dialog>
           </Card>
           {/* End Zadania section */}
 

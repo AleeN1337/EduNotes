@@ -26,13 +26,39 @@ export default function RecentNotesCard() {
     const loadNotes = async () => {
       try {
         const res = await api.get("/notes/my");
-        const arr = Array.isArray(res.data?.data) ? res.data.data : [];
+        const raw = Array.isArray(res.data?.data) ? res.data.data : [];
+        // Normalize to Note shape with stable unique id
+        const normalized: Note[] = raw.map((n: any) => {
+          const id = String(
+            n?.note_id ??
+              n?.id ??
+              `${n?.organization_id ?? "org"}-${n?.topic_id ?? "topic"}-$${
+                n?.title ?? "title"
+              }-${n?.created_at ?? Date.now()}`
+          );
+          return {
+            id,
+            title: String(n?.title ?? "")
+              .trim()
+              .substring(0, 200),
+            content: String(n?.content ?? ""),
+            organization_id: String(n?.organization_id ?? ""),
+            channel_id:
+              n?.channel_id != null ? String(n.channel_id) : undefined,
+            topic_id: n?.topic_id != null ? String(n.topic_id) : undefined,
+            author_id: String(n?.user_id ?? n?.author_id ?? ""),
+            created_at: String(n?.created_at ?? new Date().toISOString()),
+            updated_at: String(
+              n?.updated_at ?? n?.created_at ?? new Date().toISOString()
+            ),
+          } as Note;
+        });
         // sort ascending (older first)
-        arr.sort(
+        normalized.sort(
           (a: Note, b: Note) =>
             new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
-        setNotes(arr);
+        setNotes(normalized);
       } catch (err: any) {
         if (err.response?.status === 404) {
           console.log("Notes endpoint not available yet - showing empty state");
