@@ -48,7 +48,8 @@ async function handleBackendRequest(
     if (method !== "GET" && method !== "DELETE") {
       try {
         body = await request.text();
-        console.log("Request body (as text):", body);
+        // Nie loguj pełnych treści (mogą zawierać hasła/tokeny)
+        console.log("Request body length:", body?.length || 0);
         console.log("Request body type:", typeof body);
       } catch (error) {
         // If there's no body, that's fine
@@ -72,14 +73,10 @@ async function handleBackendRequest(
     const fullUrl = searchParams ? `${url}?${searchParams}` : url;
 
     console.log(`Proxying ${method} request to: ${fullUrl}`);
-    console.log("Headers to send to backend:", headers);
     console.log("Content-Type being sent:", headers["content-type"]);
     console.log("Path parts:", pathParts);
     console.log("Path:", path);
-    if (body !== undefined) {
-      console.log("Body content:", body);
-      console.log("Body length:", body.length);
-    } else {
+    if (body === undefined) {
       console.log("No body content");
     }
 

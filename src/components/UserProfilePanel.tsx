@@ -54,6 +54,30 @@ export default function UserProfilePanel({
   onCreateOrganization,
   onSelectOrganization,
 }: UserProfilePanelProps) {
+  // Helpers to safely derive display strings
+  const getDisplayName = (u: User) => {
+    const fn = (u.firstName || "").trim();
+    const ln = (u.lastName || "").trim();
+    if (fn || ln) return `${fn} ${ln}`.trim();
+    if (u.username) return u.username;
+    if (u.email) return u.email.split("@")[0];
+    return "Użytkownik";
+  };
+
+  const getInitials = (u: User) => {
+    const fn = (u.firstName || "").trim();
+    const ln = (u.lastName || "").trim();
+    if (fn || ln) {
+      return `${fn.charAt(0)}${ln.charAt(0)}`.toUpperCase() || "U";
+    }
+    if (u.username && u.username.length > 0) {
+      return u.username.substring(0, 2).toUpperCase();
+    }
+    if (u.email && u.email.length > 0) {
+      return u.email.substring(0, 2).toUpperCase();
+    }
+    return "U";
+  };
   const [panelNotes, setPanelNotes] = useState<number>(0);
   const [panelOrgsCount, setPanelOrgsCount] = useState<number>(
     organizations.length
@@ -136,14 +160,13 @@ export default function UserProfilePanel({
               mb: 2,
             }}
           >
-            {user.firstName[0]}
-            {user.lastName[0]}
+            {getInitials(user)}
           </Box>
           <Typography variant="h6" gutterBottom>
-            {user.firstName} {user.lastName}
+            {getDisplayName(user)}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            @{user.username}
+            @{user.username || (user.email ? user.email.split("@")[0] : "user")}
           </Typography>
         </Box>
 
@@ -163,7 +186,11 @@ export default function UserProfilePanel({
                 </ListItemIcon>
                 <ListItemText
                   primary="Imię i nazwisko"
-                  secondary={`${user.firstName} ${user.lastName}`}
+                  secondary={
+                    user.firstName || user.lastName
+                      ? `${user.firstName || ""} ${user.lastName || ""}`.trim()
+                      : getDisplayName(user)
+                  }
                 />
               </ListItem>
 

@@ -44,7 +44,21 @@ export class AuthAPI {
         // Prawdziwe logowanie zadziałało
         if (result.token) {
           localStorage.setItem("auth_token", result.token);
-          localStorage.setItem("user", JSON.stringify(result.user));
+          // Zapisz użytkownika tylko jeśli nie jest null; w przeciwnym razie użyj minimalnych danych
+          const backendUser = result.user as User | null;
+          const minimalUser: User = {
+            id: "temp",
+            email: data.email,
+            username: data.email.split("@")[0],
+            firstName: "",
+            lastName: "",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+          localStorage.setItem(
+            "user",
+            JSON.stringify(backendUser ?? minimalUser)
+          );
 
           // Dodaj również do cookies dla middleware
           document.cookie = `auth_token=${result.token}; path=/; max-age=86400; samesite=lax`;
@@ -101,23 +115,43 @@ export class AuthAPI {
       // Wywołaj prawdziwe API rejestracji
       const response = await fetch("/api/auth/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
         body: JSON.stringify(data),
       });
-      const result = await response.json();
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || "Błąd rejestracji");
+      let result: any;
+      try {
+        result = await response.json();
+      } catch {
+        const text = await response.text();
+        throw new Error(text || "Błąd rejestracji");
+      }
+      if (!response.ok || result?.success === false) {
+        const message =
+          result?.message ||
+          (Array.isArray(result?.detail)
+            ? result.detail
+                .map((d: any) => d?.msg)
+                .filter(Boolean)
+                .join("; ")
+            : result?.detail) ||
+          "Błąd rejestracji";
+        throw new Error(message);
       }
       // Użyj tokena i danych użytkownika z odpowiedzi
-      const token = result.token as string;
+      const token = result.token as string | undefined;
       const backendUser = result.user as User;
       // Zapisz w localStorage i ciasteczkach
-      localStorage.setItem("auth_token", token);
+      if (token) {
+        localStorage.setItem("auth_token", token);
+        document.cookie = `auth_token=${token}; path=/; max-age=86400; samesite=lax`;
+      }
       localStorage.setItem("user", JSON.stringify(backendUser));
-      document.cookie = `auth_token=${token}; path=/; max-age=86400; samesite=lax`;
       return {
         success: true,
-        data: { ...backendUser, token },
+        data: { ...backendUser, token: token ?? "" },
         message: result.message || "Rejestracja przebiegła pomyślnie",
       };
     } catch (error: any) {

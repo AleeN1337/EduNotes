@@ -11,18 +11,19 @@ export async function POST(request: NextRequest) {
     formData.append("password", password);
     formData.append("grant_type", "password");
 
-    console.log("Sending to backend:", `${process.env.BACKEND_URL}/auth/login`);
+    const origin = request.nextUrl.origin;
+    const backendBase = process.env.BACKEND_URL || `${origin}/api/backend`;
+    const loginUrl = `${backendBase}/auth/login`;
+    console.log("Sending to backend:", loginUrl);
 
-    const backendResponse = await fetch(
-      `${process.env.BACKEND_URL}/auth/login`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: formData,
-      }
-    );
+    const backendResponse = await fetch(loginUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+      },
+      body: formData,
+    });
 
     console.log("Backend response status:", backendResponse.status);
 
@@ -49,13 +50,29 @@ export async function POST(request: NextRequest) {
     const data = await backendResponse.json();
     console.log("Backend success response:", data);
 
-    // Po udanym logowaniu, pobierz dane użytkownika z /organization_users/me
-    let userData = null;
+    // Przygotuj minimalne dane użytkownika; będą nadpisane jeśli znajdziemy dokładniejsze
+    let userData: any = {
+      id: "temp",
+      email,
+      username: email.split("@")[0],
+      firstName: "",
+      lastName: "",
+      avatar: null,
+      score: 0,
+      rank: "niekompetentny",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    // Po udanym logowaniu, spróbuj wzbogacić dane użytkownika
     if (data.access_token) {
       try {
-        console.log("Fetching user organizations from /organization_users/me...");
+        console.log(
+          "Fetching user organizations from /organization_users/me..."
+        );
+        const origin = request.nextUrl.origin;
+        const backendBase = process.env.BACKEND_URL || `${origin}/api/backend`;
         const orgUsersResponse = await fetch(
-          `${process.env.BACKEND_URL}/organization_users/me`,
+          `${backendBase}/organization_users/me`,
           {
             method: "GET",
             headers: {
@@ -72,7 +89,7 @@ export async function POST(request: NextRequest) {
             const userId = orgUsers.data[0].user_id;
             try {
               const userResponse = await fetch(
-                `${process.env.BACKEND_URL}/users/${userId}`,
+                `${backendBase}/users/${userId}`,
                 {
                   method: "GET",
                   headers: {
@@ -100,50 +117,67 @@ export async function POST(request: NextRequest) {
               }
             } catch {}
           } else {
-            // No organizations - default user data
-            userData = {
-              id: "temp",
-              email,
-              username: email.split("@")[0],
-              firstName: "",
-              lastName: "",
-              avatar: null,
-              score: 0,
-              rank: "niekompetentny",
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            };
+            // Brak organizacji — spróbuj pobrać użytkownika z listy /users/ po email
+            try {
+              const usersResp = await fetch(`${backendBase}/users/`, {
+                method: "GET",
+                headers: {
+                  Authorization: `Bearer ${data.access_token}`,
+                  "Content-Type": "application/json",
+                },
+              });
+              if (usersResp.ok) {
+                const usersList = await usersResp.json();
+                const arr = Array.isArray(usersList?.data)
+                  ? usersList.data
+                  : [];
+                const found = arr.find((u: any) => u.email === email);
+                if (found) {
+                  userData = {
+                    id: found.user_id?.toString(),
+                    email: found.email,
+                    username: found.username,
+                    firstName: found.first_name,
+                    lastName: found.last_name,
+                    avatar: found.avatar_url,
+                    score: found.score,
+                    rank: found.rank,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                  };
+                }
+              }
+            } catch (e) {
+              console.warn("Failed to fetch users list for email lookup", e);
+            }
+            if (!userData || !userData.id || userData.id === "temp") {
+              // Ostatnia próba: odczytaj email z tokena (JWT) i ustaw username
+              try {
+                const [, payloadB64] = data.access_token.split(".");
+                const json = JSON.parse(
+                  Buffer.from(payloadB64, "base64").toString("utf8")
+                );
+                const tokenEmail = json?.sub || json?.email;
+                if (
+                  typeof tokenEmail === "string" &&
+                  tokenEmail.includes("@")
+                ) {
+                  userData = {
+                    ...userData,
+                    email: tokenEmail,
+                    username: tokenEmail.split("@")[0],
+                  };
+                }
+              } catch {}
+            }
           }
         } else {
           // Treat non-OK as no organizations
-          userData = {
-            id: "temp",
-            email,
-            username: email.split("@")[0],
-            firstName: "",
-            lastName: "",
-            avatar: null,
-            score: 0,
-            rank: "niekompetentny",
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          };
+          // userData już zawiera minimalny zestaw
         }
       } catch (orgFetchError) {
         console.warn("Failed to fetch organization data:", orgFetchError);
-        // Fallback - stwórz podstawowe dane użytkownika
-        userData = {
-          id: "temp",
-          email: email,
-          username: email.split("@")[0],
-          firstName: "",
-          lastName: "",
-          avatar: null,
-          score: 0,
-          rank: "niekompetentny",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
+        // userData pozostaje minimalne
       }
     }
 

@@ -24,16 +24,20 @@ export default function QuickStatsCards() {
     try {
       // Pobierz dane notatek i organizacji z obsługą błędów 404
       const promises = [
-        api.get("/notes/my").catch(err => {
+        api.get("/notes/my").catch((err) => {
           if (err.response?.status === 404) {
-            console.log("Notes endpoint not available yet - using default values");
+            console.log(
+              "Notes endpoint not available yet - using default values"
+            );
             return { data: { data: [] } };
           }
           throw err;
         }),
-        api.get("/organizations/my").catch(err => {
+        api.get("/organizations/my").catch((err) => {
           if (err.response?.status === 404) {
-            console.log("Organizations endpoint not available yet - using default values");
+            console.log(
+              "Organizations endpoint not available yet - using default values"
+            );
             return { data: { data: [] } };
           }
           throw err;
@@ -41,12 +45,12 @@ export default function QuickStatsCards() {
       ];
 
       const [notesRes, orgRes] = await Promise.all(promises);
-      
+
       const notesArray = Array.isArray(notesRes.data?.data)
         ? notesRes.data.data
         : [];
       const orgArray = Array.isArray(orgRes.data?.data) ? orgRes.data.data : [];
-      
+
       // Obliczanie rangi na podstawie liczby notatek
       const count = notesArray.length;
       let computedRank: string;
@@ -55,7 +59,7 @@ export default function QuickStatsCards() {
       else if (count >= 20) computedRank = "specalista";
       else if (count >= 10) computedRank = "początkujący";
       else computedRank = "niekompetentny";
-      
+
       setNotesCount(count);
       setOrgCount(orgArray.length);
       setRank(computedRank);

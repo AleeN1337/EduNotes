@@ -3,13 +3,17 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(request: NextRequest) {
   try {
     // Parse request body (supports JSON and URL-encoded form)
-    let firstName: string, lastName: string, email: string, username: string, password: string;
+    let firstName: string,
+      lastName: string,
+      email: string,
+      username: string,
+      password: string;
     const contentType = request.headers.get("content-type") || "";
     if (contentType.includes("application/x-www-form-urlencoded")) {
       const text = await request.text();
       const params = new URLSearchParams(text);
-      firstName = params.get("first_name") || "";
-      lastName = params.get("last_name") || "";
+      firstName = params.get("first_name") || params.get("firstName") || "";
+      lastName = params.get("last_name") || params.get("lastName") || "";
       email = params.get("email") || "";
       username = params.get("username") || "";
       password = params.get("password") || "";
@@ -22,66 +26,200 @@ export async function POST(request: NextRequest) {
       password = body.password;
     }
 
-    // Validation and debugging
-    console.log("Registration request data:", {
+    // Sanitize inputs: trim and normalize casing
+    firstName = (firstName || "").trim();
+    lastName = (lastName || "").trim();
+    email = (email || "").trim().toLowerCase();
+    username = (username || "").trim().toLowerCase();
+    password = password || "";
+
+    // Quick guard: missing fields
+    if (!email || !username || !firstName || !lastName || !password) {
+      return NextResponse.json(
+        { success: false, message: "Wszystkie pola są wymagane" },
+        { status: 422 }
+      );
+    }
+
+    console.log("Registration request data (sanitized):", {
       firstName,
       lastName,
       email,
       username,
-      password: password ? `[${password.length} chars]` : 'missing'
+      password: password ? `[${password.length} chars]` : "missing",
     });
 
-    // Use internal proxy endpoint for backend calls
+    // Use internal proxy endpoint for backend calls if BACKEND_URL not set
     const origin = request.nextUrl.origin;
-    const registerUrl = process.env.BACKEND_URL
-      ? `${process.env.BACKEND_URL}/auth/register`
-      : `${origin}/api/backend/auth/register`;
-    
-    // Backend expects JSON for registration (unlike login which expects form-urlencoded)
+    const backendBase = process.env.BACKEND_URL || `${origin}/api/backend`;
+
+    const registerUrl = `${backendBase}/auth/register`;
+
+    // Backend expects JSON for registration
     const registerData = {
-      username: username,
-      email: email,
-      password: password,
+      username,
+      email,
+      password,
       first_name: firstName,
       last_name: lastName,
     };
-    
+
     console.log("Sending to backend:", {
       url: registerUrl,
-      data: { ...registerData, password: registerData.password ? `[${registerData.password.length} chars]` : 'missing' }
+      data: { ...registerData, password: `[${password.length} chars]` },
     });
-    
-    const backendResponse = await fetch(registerUrl, {
+
+    // Send JSON (backend for /auth/register expects JSON per API contract)
+    let backendResponse = await fetch(registerUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Accept: "application/json",
       },
       body: JSON.stringify(registerData),
     });
 
     if (!backendResponse.ok) {
-      const errorData = await backendResponse.json().catch(() => ({}));
+      const errorText = await backendResponse.text().catch(() => "");
+      let errorData: any = {};
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {}
       console.error("Backend registration error:", {
         status: backendResponse.status,
         statusText: backendResponse.statusText,
-        errorData
+        errorData,
       });
+      const detailMsg = Array.isArray(errorData?.detail)
+        ? errorData.detail
+            ?.map((d: any) => d?.msg)
+            .filter(Boolean)
+            .join("; ")
+        : typeof errorData?.detail === "string"
+        ? errorData.detail
+        : undefined;
+
+      // If the error looks like duplicate email/username, try to log the user in and treat it as success
+      const looksLikeDuplicate =
+        /already\s+exists|exists|istnieje|zaj(et|ę)ty|taken|duplicate|unique/i.test(
+          `${detailMsg || ""} ${errorText || ""}`
+        );
+      if (backendResponse.status === 422 && looksLikeDuplicate) {
+        try {
+          const loginUrl = `${backendBase}/auth/login`;
+          const loginBody = new URLSearchParams();
+          loginBody.append("username", email);
+          loginBody.append("password", password);
+          loginBody.append("grant_type", "password");
+          const loginResp = await fetch(loginUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              Accept: "application/json",
+            },
+            body: loginBody.toString(),
+          });
+          if (loginResp.ok) {
+            const loginData = await loginResp.json();
+            const token = loginData.access_token || loginData.token;
+            // Build minimal user from provided data (normalized)
+            const normalizedUser = {
+              id: "temp",
+              email,
+              username,
+              firstName,
+              lastName,
+              avatar: null,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+            return NextResponse.json({
+              success: true,
+              token,
+              user: normalizedUser,
+              message:
+                "Konto już istniało — zalogowano automatycznie po rejestracji",
+            });
+          }
+        } catch (e) {
+          console.warn("Auto-login on duplicate failed:", e);
+        }
+      }
+
+      const message =
+        detailMsg || errorData?.message || "Błąd podczas rejestracji (422)";
       return NextResponse.json(
         {
           success: false,
-          message: errorData.detail || errorData.message || "Błąd podczas rejestracji",
+          message,
         },
         { status: backendResponse.status }
       );
     }
 
-    const data = await backendResponse.json();
-    console.log("Backend registration success:", data);
+    const successText = await backendResponse.text().catch(() => "");
+    let data: any = null;
+    try {
+      data = successText ? JSON.parse(successText) : null;
+    } catch {
+      // Backend mógł zwrócić pustą odpowiedź lub nie-JSON – to akceptujemy
+    }
+    console.log(
+      "Backend registration success (raw):",
+      successText || "<empty>"
+    );
+
+    // Try to locate raw user in common shapes
+    const raw = data?.data?.user || data?.user || data?.data || data || null;
+    // Normalize to our User shape (fallback na dane wejściowe jeśli brak body)
+    const normalizedUser = {
+      id: (raw?.user_id ?? raw?.id ?? "temp").toString(),
+      email: raw?.email ?? email,
+      username:
+        raw?.username ??
+        (raw?.email ? String(raw.email).split("@")[0] : username),
+      firstName: raw?.first_name ?? raw?.firstName ?? firstName,
+      lastName: raw?.last_name ?? raw?.lastName ?? lastName,
+      avatar: raw?.avatar_url ?? raw?.avatar ?? null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    // Attempt auto-login to obtain token after successful registration
+    let token: string | undefined = undefined;
+    try {
+      const loginUrl = `${backendBase}/auth/login`;
+      const loginBody = new URLSearchParams();
+      // FastAPI /auth/login expects username=email
+      loginBody.append("username", email);
+      loginBody.append("password", password);
+      loginBody.append("grant_type", "password");
+
+      const loginResp = await fetch(loginUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Accept: "application/json",
+        },
+        body: loginBody.toString(),
+      });
+      if (loginResp.ok) {
+        const loginData = await loginResp.json();
+        token = loginData.access_token || loginData.token;
+      } else {
+        console.warn(
+          "Auto-login after register failed with status:",
+          loginResp.status
+        );
+      }
+    } catch (e) {
+      console.warn("Auto-login after register threw:", e);
+    }
 
     return NextResponse.json({
       success: true,
-      token: data.access_token || data.token,
-      user: data.user || data.data?.user || data,
+      token,
+      user: normalizedUser,
       message: "Rejestracja przebiegła pomyślnie",
     });
   } catch (error) {

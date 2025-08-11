@@ -72,6 +72,24 @@ export default function Dashboard() {
 
   const router = useRouter();
 
+  // Helper: resolve current user's numeric ID reliably
+  const resolveUserId = async (): Promise<number | undefined> => {
+    const idNum = Number((user as any)?.id);
+    if (!Number.isNaN(idNum) && idNum > 0) return idNum;
+    // Try to resolve by email via users list
+    try {
+      const email = (user as any)?.email;
+      if (!email) return undefined;
+      const resp = await api.get(`/users/`);
+      const list = Array.isArray(resp.data?.data) ? resp.data.data : [];
+      const found = list.find((u: any) => u.email === email);
+      if (found?.user_id) return Number(found.user_id);
+    } catch (e) {
+      console.warn("Dashboard: resolveUserId failed", e);
+    }
+    return undefined;
+  };
+
   // Funkcja do pokazywania powiadomień
   const showNotification = (
     message: string,
@@ -118,21 +136,22 @@ export default function Dashboard() {
           console.log(
             "Dashboard: Nie udało się pobrać danych użytkownika, ale token istnieje"
           );
-          // Zamiast przekierowania, pokaż dashboard z ograniczonymi danymi
-          const fallbackUser = {
-            id: "temp",
-            email: "unknown@example.com",
-            username: "user",
-            firstName: "",
-            lastName: "",
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          };
-          setUser(fallbackUser);
-          showNotification(
-            "Dane użytkownika będą zaktualizowane wkrótce",
-            "info"
-          );
+          // Spróbuj użyć użytkownika zapisanego w localStorage
+          try {
+            const stored = localStorage.getItem("user");
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              if (parsed) {
+                setUser(parsed);
+                showNotification("Użyto zapisanych danych profilu", "info");
+                return;
+              }
+            }
+          } catch {}
+
+          // Jeśli brak wiarygodnych danych użytkownika – wróć do logowania
+          router.push("/");
+          return;
         }
       } catch (error) {
         console.error(
@@ -301,24 +320,32 @@ export default function Dashboard() {
           orgs.map(async (org) => {
             try {
               // Pobierz członków organizacji
-              const membersPromise = api.get(`/organization_users/${org.id}`).catch(err => {
-                if (err.response?.status === 404) {
-                  console.log(`Members endpoint not available for org ${org.id}`);
-                  return { data: [] };
-                }
-                throw err;
-              });
+              const membersPromise = api
+                .get(`/organization_users/${org.id}`)
+                .catch((err) => {
+                  if (err.response?.status === 404) {
+                    console.log(
+                      `Members endpoint not available for org ${org.id}`
+                    );
+                    return { data: [] };
+                  }
+                  throw err;
+                });
 
               // Pobierz kanały organizacji
-              const channelsPromise = api.get(
-                `/channels/channels_in_organization?organization_id=${org.id}`
-              ).catch(err => {
-                if (err.response?.status === 404) {
-                  console.log(`Channels endpoint not available for org ${org.id}`);
-                  return { data: [] };
-                }
-                throw err;
-              });
+              const channelsPromise = api
+                .get(
+                  `/channels/channels_in_organization?organization_id=${org.id}`
+                )
+                .catch((err) => {
+                  if (err.response?.status === 404) {
+                    console.log(
+                      `Channels endpoint not available for org ${org.id}`
+                    );
+                    return { data: [] };
+                  }
+                  throw err;
+                });
 
               const [membersRes, channelsRes] = await Promise.all([
                 membersPromise,
@@ -331,7 +358,7 @@ export default function Dashboard() {
               const channelsRaw = Array.isArray(channelsRes.data)
                 ? channelsRes.data
                 : channelsRes.data.data ?? [];
-              
+
               stats[org.id] = {
                 members: membersRaw.length,
                 channels: channelsRaw.length,
@@ -381,11 +408,18 @@ export default function Dashboard() {
       // Spróbuj nadać użytkownikowi rolę właściciela, ale nie przerywaj procesu jeśli się nie uda
       try {
         const roleBody = new URLSearchParams({ role: "owner" }).toString();
-        await api.post(
-          `/organization_users?organization_id=${newOrgId}&user_id=${user?.id}`,
-          roleBody,
-          { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-        );
+        const uid = await resolveUserId();
+        if (!uid) {
+          console.warn(
+            "Owner assignment skipped: cannot resolve numeric user_id"
+          );
+        } else {
+          await api.post(
+            `/organization_users/?organization_id=${newOrgId}&user_id=${uid}`,
+            roleBody,
+            { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+          );
+        }
         console.log("User assigned as owner successfully");
       } catch (roleError) {
         console.warn("Failed to assign owner role:", roleError);
@@ -429,17 +463,27 @@ export default function Dashboard() {
 
         try {
           const orgUsersRes = await api.get(`/organization_users/${orgId}`);
-          for (const membership of orgUsersRes.data) {
-            await api.delete(`/organization_users/${membership.id}`);
+          const membersRaw = Array.isArray(orgUsersRes.data)
+            ? orgUsersRes.data
+            : orgUsersRes.data?.data ?? [];
+          for (const membership of membersRaw) {
+            const uid =
+              membership.user_id ?? membership.userId ?? membership.id;
+            if (uid != null) {
+              await api.delete(`/organization_users/${orgId}/${uid}`);
+            }
           }
           console.log("Dashboard: Organization memberships deleted");
         } catch (e) {
           console.warn("Dashboard: Error deleting organization memberships", e);
         }
 
-        const channelsRes = await api.get("/channels/channels_in_orgazation", {
-          params: { organization_id: Number(orgId) },
-        });
+        const channelsRes = await api.get(
+          "/channels/channels_in_organization",
+          {
+            params: { organization_id: Number(orgId) },
+          }
+        );
         for (const channel of channelsRes.data) {
           const topicsRes = await api.get("/topics/topics_in_channel", {
             params: { channel_id: channel.id },
@@ -587,19 +631,13 @@ export default function Dashboard() {
   const handleLeaveOrganization = async (orgId: string) => {
     if (!user) return;
     try {
-      // Fetch membership record by organization and user IDs
-      const membershipRes = await api.get(
-        `/organization_users?organization_id=${orgId}&user_id=${user.id}`
-      );
-      const memberships = Array.isArray(membershipRes.data)
-        ? membershipRes.data
-        : membershipRes.data.data || [];
-      if (memberships.length === 0) {
-        throw new Error("Brak członkostwa organizacji");
+      // Delete membership using contract DELETE /organization_users/{organization_id}/{user_id}
+      const uid = await resolveUserId();
+      const userIdNum = uid ?? Number(user.id);
+      if (!userIdNum || Number.isNaN(userIdNum)) {
+        throw new Error("Nie udało się ustalić ID użytkownika");
       }
-      const membershipId = memberships[0].id || memberships[0].membership_id;
-      // Delete membership by its ID
-      await api.delete(`/organization_users/${membershipId}`);
+      await api.delete(`/organization_users/${orgId}/${userIdNum}`);
       // Update UI state
       setUserOrganizations((prev) => prev.filter((o) => o.id !== orgId));
       showNotification("Opuściłeś organizację", "success");
@@ -676,7 +714,13 @@ export default function Dashboard() {
             }}
           >
             <Typewriter
-              words={[`Witaj ponownie, ${user.email.split("@")[0]}! `]}
+              words={[
+                `Witaj ponownie, ${
+                  (user as any)?.username ||
+                  (user as any)?.email?.split("@")[0] ||
+                  "Użytkowniku"
+                }! `,
+              ]}
               cursor
               cursorStyle="|"
               loop={false}

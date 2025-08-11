@@ -4,9 +4,6 @@ import axios from "axios";
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "/api/backend",
   timeout: 10000,
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
 // Request interceptor for adding auth tokens
@@ -18,13 +15,14 @@ api.interceptors.request.use(
     console.log("API Request interceptor - Data:", config.data);
     console.log("API Request interceptor - Data type:", typeof config.data);
 
-    // Add auth token here when implemented
-    const token = localStorage.getItem("auth_token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-      console.log("API Request interceptor - Added auth token");
-    } else {
-      console.log("API Request interceptor - No auth token found");
+    // Add auth token only in the browser
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("auth_token");
+      if (token) {
+        config.headers = config.headers || {};
+        (config.headers as any).Authorization = `Bearer ${token}`;
+        console.log("API Request - token attached");
+      }
     }
 
     console.log("API Request interceptor - Final headers:", config.headers);
@@ -75,7 +73,12 @@ api.interceptors.response.use(
       }
     } else {
       // Inne błędy loguj normalnie
-      console.error("API Error:", error);
+      console.error("API Error:", {
+        status: error.response?.status,
+        url: error.config?.url,
+        method: error.config?.method,
+        message: error.message,
+      });
     }
 
     // Handle common errors here
