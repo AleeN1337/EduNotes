@@ -335,15 +335,27 @@ export default function OrganizationPage() {
 
   // Helpers to map/fetch messages
   const mapNotesToMessages = (raw: any[]): Message[] =>
-    (raw as any[]).map((m: any) => ({
-      id: normalizeId(m, ["note_id", "id"]),
-      content: m.content,
-      created_at: m.created_at,
-      image_url: m.image_url,
-      user_id: normalizeId(m, ["user_id"]),
-      likes: typeof m.likes === "number" ? m.likes : 0,
-      dislikes: typeof m.dislikes === "number" ? m.dislikes : 0,
-    }));
+    (raw as any[]).map((m: any) => {
+      const possibleUrl =
+        m.image_url || m.image || m.file_url || m.file || m.attachment_url || m.attachment || m.media_url;
+      let image_url: string | undefined;
+      if (possibleUrl) {
+        const urlStr = String(possibleUrl);
+        image_url = urlStr.startsWith("http")
+          ? urlStr
+          : `/api/backend${urlStr.startsWith("/") ? "" : "/"}${urlStr}`;
+      }
+      return {
+        id: normalizeId(m, ["note_id", "id"]),
+        content: m.content,
+        created_at: m.created_at,
+        image_url,
+        content_type: m.content_type || m.type || undefined,
+        user_id: normalizeId(m, ["user_id"]),
+        likes: typeof m.likes === "number" ? m.likes : 0,
+        dislikes: typeof m.dislikes === "number" ? m.dislikes : 0,
+      } as Message;
+    });
 
   async function fetchMessagesForTopic(topicId: string) {
     const res = await api.get(`/notes/notes_in_topic?topic_id=${topicId}`);
@@ -502,19 +514,24 @@ export default function OrganizationPage() {
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedTopic) return;
+    // Allow sending when either text or a file is provided
+    if ((!newMessage.trim() && !selectedFile) || !selectedTopic) return;
     try {
       // Prepare multipart/form-data for note creation
       const formData = new FormData();
-      formData.append(
-        "title",
-        newMessage.trim().substring(0, 50) +
-          (newMessage.trim().length > 50 ? "..." : "")
-      );
-      formData.append("content", newMessage.trim());
+      const hasText = newMessage.trim().length > 0;
+      const titleBase = hasText
+        ? newMessage.trim()
+        : selectedFile?.name || "Załącznik";
+      const titleShort = titleBase.substring(0, 50) + (titleBase.length > 50 ? "..." : "");
+      formData.append("title", titleShort);
+      // For file-only messages, use filename as content fallback
+      formData.append("content", hasText ? newMessage.trim() : selectedFile?.name || "Załącznik");
       formData.append("topic_id", selectedTopic);
       formData.append("organization_id", orgId);
-      formData.append("content_type", "text");
+      // Set content type according to payload
+      const fileIsImage = selectedFile && selectedFile.type?.startsWith("image/");
+      formData.append("content_type", hasText ? "text" : fileIsImage ? "image" : "file");
       if (selectedFile) {
         formData.append("image", selectedFile);
       }
@@ -526,7 +543,8 @@ export default function OrganizationPage() {
       const createdNote = response.data.data ?? response.data;
       console.log("Note created:", createdNote);
 
-      setNewMessage("");
+  setNewMessage("");
+  setSelectedFile(null);
       // Reload notes in topic
       setMessages(await fetchMessagesForTopic(selectedTopic));
     } catch (error: any) {

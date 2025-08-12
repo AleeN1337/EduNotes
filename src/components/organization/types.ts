@@ -14,6 +14,7 @@ export interface Message {
   content: string;
   created_at: string;
   image_url?: string;
+  content_type?: string;
   user_id: string;
   likes?: number;
   dislikes?: number;

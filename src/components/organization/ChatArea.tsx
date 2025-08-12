@@ -132,6 +132,8 @@ export default function ChatArea(props: ChatAreaProps) {
     const current = !!messageRatings[msg.id]?.disliked;
     return base - (initial ? 1 : 0) + (current ? 1 : 0);
   };
+  const isImageLink = (url?: string) =>
+    !!url && /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(url);
 
   // Plus menu state
   const [menuAnchor, setMenuAnchor] = React.useState<null | HTMLElement>(null);
@@ -140,6 +142,48 @@ export default function ChatArea(props: ChatAreaProps) {
     setMenuAnchor(null);
     setMenuMsg(null);
   };
+
+  // Track image render failures to fallback to a link
+  const [failedImages, setFailedImages] = React.useState<Record<string, boolean>>({});
+  const markImageFailed = (id: string) =>
+    setFailedImages((prev) => ({ ...prev, [id]: true }));
+
+  // Blob URL cache for protected images
+  const [imageBlobUrls, setImageBlobUrls] = React.useState<Record<string, string>>({});
+  React.useEffect(() => {
+    let cancelled = false;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const candidates = messages.filter(
+      (m) =>
+        m.image_url &&
+        (isImageLink(m.image_url) || (m.content_type || "").toLowerCase().startsWith("image")) &&
+        !imageBlobUrls[m.id]
+    );
+    candidates.forEach(async (m) => {
+      try {
+        const resp = await fetch(m.image_url as string, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        if (!resp.ok) throw new Error("image fetch failed");
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        if (!cancelled) {
+          setImageBlobUrls((prev) => ({ ...prev, [m.id]: url }));
+        }
+      } catch (e) {
+        // leave it to try direct URL; onError will show link
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [messages, imageBlobUrls]);
+  // Revoke blob URLs on unmount
+  React.useEffect(() => {
+    return () => {
+      Object.values(imageBlobUrls).forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, [imageBlobUrls]);
 
   return (
     <Card
@@ -257,6 +301,34 @@ export default function ChatArea(props: ChatAreaProps) {
                   >
                     {getUserInitials(msg.user_id)}
                   </Avatar>
+                  {/* Image/file attachment preview */}
+                  {msg.image_url && (
+        !failedImages[msg.id] ? (
+                      <Box sx={{ mt: 0.5, mb: 1 }}>
+                        <a href={msg.image_url} target="_blank" rel="noreferrer">
+                          <img
+          src={imageBlobUrls[msg.id] || msg.image_url}
+                            alt="Załącznik"
+                            onError={() => markImageFailed(msg.id)}
+                            style={{ maxWidth: "100%", borderRadius: 8, display: "block" }}
+                          />
+                        </a>
+                      </Box>
+                    ) : (
+                      <Box sx={{ mt: 0.5, mb: 1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          <a
+                            href={msg.image_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{ color: "inherit", textDecoration: "underline" }}
+                          >
+                            Pobierz załącznik
+                          </a>
+                        </Typography>
+                      </Box>
+                    )
+                  )}
                   <Typography variant="body2" sx={{ fontWeight: 500 }}>
                     {msg.content}
                   </Typography>
@@ -497,7 +569,7 @@ export default function ChatArea(props: ChatAreaProps) {
           <Button
             variant="contained"
             onClick={onSend}
-            disabled={!canSend || !newMessage.trim()}
+            disabled={!canSend}
             startIcon={<SendIcon />}
             sx={{
               borderRadius: "20px",
