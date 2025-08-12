@@ -342,6 +342,7 @@ export default function OrganizationPage() {
       image_url: m.image_url,
       user_id: normalizeId(m, ["user_id"]),
       likes: typeof m.likes === "number" ? m.likes : 0,
+      dislikes: typeof m.dislikes === "number" ? m.dislikes : 0,
     }));
 
   async function fetchMessagesForTopic(topicId: string) {

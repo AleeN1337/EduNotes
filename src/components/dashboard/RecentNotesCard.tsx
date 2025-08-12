@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Button,
-  IconButton,
-} from "@mui/material";
+import { Box, Card, CardContent, Typography, Button } from "@mui/material";
 import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 import ThumbDownIcon from "@mui/icons-material/ThumbDown";
 
@@ -17,10 +10,7 @@ import { Note } from "@/types";
 
 export default function RecentNotesCard() {
   const [notes, setNotes] = useState<Note[]>([]);
-  // ratings per note id
-  const [ratings, setRatings] = useState<
-    Record<string, { liked: boolean; disliked: boolean }>
-  >({});
+  // local ratings no longer drive counters here; dashboard shows backend counts only
 
   useEffect(() => {
     const loadNotes = async () => {
@@ -51,6 +41,8 @@ export default function RecentNotesCard() {
             updated_at: String(
               n?.updated_at ?? n?.created_at ?? new Date().toISOString()
             ),
+            likes: typeof n?.likes === "number" ? n.likes : 0,
+            dislikes: typeof n?.dislikes === "number" ? n.dislikes : 0,
           } as Note;
         });
         // sort ascending (older first)
@@ -71,13 +63,11 @@ export default function RecentNotesCard() {
     };
     loadNotes();
   }, []);
-  // load ratings
-  useEffect(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem("noteRatings") || "{}");
-      setRatings(stored);
-    } catch {}
-  }, []);
+  // No local toggles; show only backend-provided counts
+  const getDisplayedLikes = (note: Note) =>
+    typeof note.likes === "number" ? note.likes : 0;
+  const getDisplayedDislikes = (note: Note) =>
+    typeof note.dislikes === "number" ? note.dislikes : 0;
 
   return (
     <Card sx={{ boxShadow: "0 4px 20px rgba(0,0,0,0.1)", borderRadius: 3 }}>
@@ -126,55 +116,28 @@ export default function RecentNotesCard() {
               <Typography variant="caption" color="text.secondary">
                 {new Date(note.created_at).toLocaleString()}
               </Typography>
-              <Box sx={{ mt: 1, display: "flex", gap: 1 }}>
-                <IconButton
-                  size="small"
-                  color={ratings[note.id]?.liked ? "primary" : "default"}
-                  onClick={() => {
-                    setRatings((prev) => {
-                      const curr = prev[note.id] || {
-                        liked: false,
-                        disliked: false,
-                      };
-                      const updated = {
-                        liked: !curr.liked,
-                        disliked: curr.liked ? curr.disliked : curr.disliked,
-                      };
-                      const newAll = { ...prev, [note.id]: updated };
-                      localStorage.setItem(
-                        "noteRatings",
-                        JSON.stringify(newAll)
-                      );
-                      return newAll;
-                    });
-                  }}
-                >
-                  <ThumbUpIcon fontSize="small" />
-                </IconButton>
-                <IconButton
-                  size="small"
-                  color={ratings[note.id]?.disliked ? "error" : "default"}
-                  onClick={() => {
-                    setRatings((prev) => {
-                      const curr = prev[note.id] || {
-                        liked: false,
-                        disliked: false,
-                      };
-                      const updated = {
-                        disliked: !curr.disliked,
-                        liked: curr.disliked ? curr.liked : curr.liked,
-                      };
-                      const newAll = { ...prev, [note.id]: updated };
-                      localStorage.setItem(
-                        "noteRatings",
-                        JSON.stringify(newAll)
-                      );
-                      return newAll;
-                    });
-                  }}
-                >
-                  <ThumbDownIcon fontSize="small" />
-                </IconButton>
+              <Box
+                sx={{ mt: 1, display: "flex", gap: 1, alignItems: "center" }}
+              >
+                {getDisplayedLikes(note) > 0 ? (
+                  <>
+                    <ThumbUpIcon
+                      sx={{ fontSize: 16, color: "text.secondary" }}
+                    />
+                    <Typography variant="caption" color="text.secondary">
+                      {getDisplayedLikes(note)}
+                    </Typography>
+                  </>
+                ) : getDisplayedDislikes(note) > 0 ? (
+                  <>
+                    <ThumbDownIcon
+                      sx={{ fontSize: 16, color: "text.secondary" }}
+                    />
+                    <Typography variant="caption" color="text.secondary">
+                      {getDisplayedDislikes(note)}
+                    </Typography>
+                  </>
+                ) : null}
               </Box>
             </Box>
           ))}

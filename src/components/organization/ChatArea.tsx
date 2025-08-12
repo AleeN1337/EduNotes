@@ -12,6 +12,8 @@ import {
   IconButton,
   Button,
   Avatar,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
@@ -19,6 +21,7 @@ import SendIcon from "@mui/icons-material/Send";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 import ThumbDownIcon from "@mui/icons-material/ThumbDown";
+import AddIcon from "@mui/icons-material/Add";
 import { Message } from "./types";
 import api from "@/lib/api";
 
@@ -106,17 +109,36 @@ export default function ChatArea(props: ChatAreaProps) {
   >({});
   const initialCapturedRef = React.useRef(false);
   React.useEffect(() => {
-    if (!initialCapturedRef.current) {
-      initialRatingsRef.current = messageRatings;
-      initialCapturedRef.current = true;
+    if (initialCapturedRef.current) return;
+    try {
+      const stored = JSON.parse(localStorage.getItem(ratingsKey) || "{}");
+      initialRatingsRef.current = stored;
+    } catch {
+      initialRatingsRef.current = {};
     }
-  }, [messageRatings]);
+    initialCapturedRef.current = true;
+  }, [ratingsKey]);
 
   const getDisplayedLikes = (msg: Message) => {
     const base = typeof msg.likes === "number" ? msg.likes : 0;
     const initialLiked = !!initialRatingsRef.current[msg.id]?.liked;
     const currentLiked = !!messageRatings[msg.id]?.liked;
     return base - (initialLiked ? 1 : 0) + (currentLiked ? 1 : 0);
+  };
+
+  const getDisplayedDislikes = (msg: Message) => {
+    const base = typeof msg.dislikes === "number" ? msg.dislikes : 0;
+    const initial = !!initialRatingsRef.current[msg.id]?.disliked;
+    const current = !!messageRatings[msg.id]?.disliked;
+    return base - (initial ? 1 : 0) + (current ? 1 : 0);
+  };
+
+  // Plus menu state
+  const [menuAnchor, setMenuAnchor] = React.useState<null | HTMLElement>(null);
+  const [menuMsg, setMenuMsg] = React.useState<Message | null>(null);
+  const closeMenu = () => {
+    setMenuAnchor(null);
+    setMenuMsg(null);
   };
 
   return (
@@ -186,141 +208,20 @@ export default function ChatArea(props: ChatAreaProps) {
                   alignItems: "flex-start",
                   mb: 2,
                   gap: 1,
-                  "&:hover .message-actions": {
+                  "&:hover .message-plus": {
                     opacity: 1,
                     visibility: "visible",
                   },
                 }}
               >
-                {!isOwn && (
-                  <Avatar
-                    sx={{
-                      width: 32,
-                      height: 32,
-                      backgroundColor:
-                        userColors[msg.user_id] ??
-                        getColorForUser(String(msg.user_id)),
-                      fontSize: "0.75rem",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {getUserInitials(msg.user_id)}
-                  </Avatar>
-                )}
-                {/* Actions on the left for own messages */}
-                {isOwn && (
-                  <Box
-                    className="message-actions"
-                    sx={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 0.5,
-                      opacity: 0,
-                      visibility: "hidden",
-                      transition: "opacity 0.15s ease",
-                    }}
-                  >
-                    {/* Like count above like icon */}
-                    {getDisplayedLikes(msg) > 0 && (
-                      <Typography
-                        variant="caption"
-                        sx={{ textAlign: "center", color: "text.secondary" }}
-                      >
-                        {getDisplayedLikes(msg)}
-                      </Typography>
-                    )}
-                    {/* Like toggle available for all messages */}
-                    <IconButton
-                      size="small"
-                      aria-label="Polub wiadomość"
-                      onClick={() => {
-                        const liked = !!messageRatings[msg.id]?.liked;
-                        const next = {
-                          ...messageRatings,
-                          [msg.id]: { liked: !liked, disliked: false },
-                        } as Record<
-                          string,
-                          { liked: boolean; disliked: boolean }
-                        >;
-                        setMessageRatings(next);
-                        try {
-                          localStorage.setItem(
-                            ratingsKey,
-                            JSON.stringify(next)
-                          );
-                        } catch {}
-                        // optimistic like count update and backend call
-                        if (!liked) {
-                          api
-                            .post(`/notes/give_like`, null, {
-                              params: { note_id: msg.id },
-                            })
-                            .catch(() => {});
-                        }
-                      }}
-                      sx={{
-                        color: messageRatings[msg.id]?.liked
-                          ? "#1565c0"
-                          : "#90a4ae",
-                        "&:hover": { backgroundColor: "#eceff1" },
-                      }}
-                    >
-                      <ThumbUpIcon fontSize="small" />
-                    </IconButton>
-                    {/* Dislike toggle available for all messages */}
-                    <IconButton
-                      size="small"
-                      aria-label="Nie lubię tej wiadomości"
-                      onClick={() => {
-                        const disliked = !!messageRatings[msg.id]?.disliked;
-                        const next = {
-                          ...messageRatings,
-                          [msg.id]: { liked: false, disliked: !disliked },
-                        } as Record<
-                          string,
-                          { liked: boolean; disliked: boolean }
-                        >;
-                        setMessageRatings(next);
-                        try {
-                          localStorage.setItem(
-                            ratingsKey,
-                            JSON.stringify(next)
-                          );
-                        } catch {}
-                        if (!disliked) {
-                          api
-                            .post(`/notes/give_dislike`, null, {
-                              params: { note_id: msg.id },
-                            })
-                            .catch(() => {});
-                        }
-                      }}
-                      sx={{
-                        color: messageRatings[msg.id]?.disliked
-                          ? "#c62828"
-                          : "#90a4ae",
-                        "&:hover": { backgroundColor: "#ffebee" },
-                      }}
-                    >
-                      <ThumbDownIcon fontSize="small" />
-                    </IconButton>
-                    {/* Delete only for own messages */}
-                    <IconButton
-                      size="small"
-                      aria-label="Usuń wiadomość"
-                      onClick={() => onDeleteMessage(String(msg.id))}
-                      sx={{
-                        color: "#e57373",
-                        "&:hover": { backgroundColor: "#ffebee" },
-                      }}
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
-                )}
+                {/* Avatar moved inside bubble (bottom-left). No external avatar here. */}
+                {/* Actions hidden under plus menu */}
                 <Box
                   sx={{
                     p: 2,
+                    pl: 6, // make room for avatar inside bubble (left)
+                    pb: 5, // make room for avatar inside bubble (bottom)
+                    position: "relative",
                     maxWidth: "70%",
                     width: "auto",
                     backgroundColor: getColorForUser(String(msg.user_id)),
@@ -331,137 +232,204 @@ export default function ChatArea(props: ChatAreaProps) {
                     whiteSpace: "pre-wrap",
                     wordBreak: "break-word",
                     boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                    // reveal timestamp only when hovering the bubble
+                    "&:hover .message-timestamp": {
+                      opacity: 1,
+                      transform: "translateY(0px)",
+                    },
                   }}
                 >
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {msg.content}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ display: "block", mt: 0.5, opacity: 0.7 }}
-                  >
-                    {new Date(msg.created_at).toLocaleTimeString()}
-                  </Typography>
-                </Box>
-                {/* Actions on the right for other users' messages */}
-                {!isOwn && (
-                  <Box
-                    className="message-actions"
-                    sx={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 0.5,
-                      opacity: 0,
-                      visibility: "hidden",
-                      transition: "opacity 0.15s ease",
-                    }}
-                  >
-                    {getDisplayedLikes(msg) > 0 && (
-                      <Typography
-                        variant="caption"
-                        sx={{ textAlign: "center", color: "text.secondary" }}
-                      >
-                        {getDisplayedLikes(msg)}
-                      </Typography>
-                    )}
-                    <IconButton
-                      size="small"
-                      aria-label="Polub wiadomość"
-                      onClick={() => {
-                        const liked = !!messageRatings[msg.id]?.liked;
-                        const next = {
-                          ...messageRatings,
-                          [msg.id]: { liked: !liked, disliked: false },
-                        } as Record<
-                          string,
-                          { liked: boolean; disliked: boolean }
-                        >;
-                        setMessageRatings(next);
-                        try {
-                          localStorage.setItem(
-                            ratingsKey,
-                            JSON.stringify(next)
-                          );
-                        } catch {}
-                        if (!liked) {
-                          api
-                            .post(`/notes/give_like`, null, {
-                              params: { note_id: msg.id },
-                            })
-                            .catch(() => {});
-                        }
-                      }}
-                      sx={{
-                        color: messageRatings[msg.id]?.liked
-                          ? "#1565c0"
-                          : "#90a4ae",
-                        "&:hover": { backgroundColor: "#eceff1" },
-                      }}
-                    >
-                      <ThumbUpIcon fontSize="small" />
-                    </IconButton>
-                    {/* Dislike toggle */}
-                    <IconButton
-                      size="small"
-                      aria-label="Nie lubię tej wiadomości"
-                      onClick={() => {
-                        const disliked = !!messageRatings[msg.id]?.disliked;
-                        const next = {
-                          ...messageRatings,
-                          [msg.id]: { liked: false, disliked: !disliked },
-                        } as Record<
-                          string,
-                          { liked: boolean; disliked: boolean }
-                        >;
-                        setMessageRatings(next);
-                        try {
-                          localStorage.setItem(
-                            ratingsKey,
-                            JSON.stringify(next)
-                          );
-                        } catch {}
-                        if (!disliked) {
-                          api
-                            .post(`/notes/give_dislike`, null, {
-                              params: { note_id: msg.id },
-                            })
-                            .catch(() => {});
-                        }
-                      }}
-                      sx={{
-                        color: messageRatings[msg.id]?.disliked
-                          ? "#c62828"
-                          : "#90a4ae",
-                        "&:hover": { backgroundColor: "#ffebee" },
-                      }}
-                    >
-                      <ThumbDownIcon fontSize="small" />
-                    </IconButton>
-                    {/* No delete for other users' messages */}
-                  </Box>
-                )}
-                {/* Right-side avatar for own messages */}
-                {isOwn && (
+                  {/* In-bubble avatar at bottom-left */}
                   <Avatar
                     sx={{
-                      width: 32,
-                      height: 32,
+                      width: 28,
+                      height: 28,
+                      position: "absolute",
+                      left: 8,
+                      bottom: 8,
                       backgroundColor:
                         userColors[msg.user_id] ??
                         getColorForUser(String(msg.user_id)),
-                      fontSize: "0.75rem",
-                      fontWeight: 600,
+                      fontSize: "0.7rem",
+                      fontWeight: 700,
+                      border: "2px solid rgba(0,0,0,0.06)",
                     }}
                   >
                     {getUserInitials(msg.user_id)}
                   </Avatar>
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    {msg.content}
+                  </Typography>
+                  {/* Hidden timestamp under the bubble, shows on hover */}
+                  <Typography
+                    className="message-timestamp"
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{
+                      position: "absolute",
+                      bottom: -16,
+                      left: isOwn ? "auto" : 8,
+                      right: isOwn ? 8 : "auto",
+                      opacity: 0,
+                      transform: "translateY(4px)",
+                      transition: "opacity 0.15s ease, transform 0.15s ease",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    {new Date(msg.created_at).toLocaleTimeString()}
+                  </Typography>
+                </Box>
+                {/* Always-visible like/dislike counters next to the bubble */}
+                {(getDisplayedLikes(msg) > 0 || getDisplayedDislikes(msg) > 0) && (
+                  <Box
+                    sx={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 0.75,
+                      backgroundColor: "#eceff1",
+                      borderRadius: 999,
+                      px: 1,
+                      py: 0.25,
+                      color: "#546e7a",
+                      fontSize: 12,
+                    }}
+                  >
+                    {getDisplayedLikes(msg) > 0 && (
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                        <ThumbUpIcon sx={{ fontSize: 14, color: "#1565c0" }} />
+                        <Typography variant="caption" sx={{ lineHeight: 1 }}>
+                          {getDisplayedLikes(msg)}
+                        </Typography>
+                      </Box>
+                    )}
+                    {getDisplayedDislikes(msg) > 0 && (
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                        <ThumbDownIcon sx={{ fontSize: 14, color: "#c62828" }} />
+                        <Typography variant="caption" sx={{ lineHeight: 1 }}>
+                          {getDisplayedDislikes(msg)}
+                        </Typography>
+                      </Box>
+                    )}
+                  </Box>
                 )}
+                {/* No side action stacks; plus menu instead */}
+                <IconButton
+                  size="small"
+                  className="message-plus"
+                  aria-label="Akcje wiadomości"
+                  onClick={(e) => {
+                    setMenuAnchor(e.currentTarget);
+                    setMenuMsg(msg);
+                  }}
+                  sx={{
+                    opacity: 0,
+                    visibility: "hidden",
+                    transition: "opacity 0.15s ease",
+                    color: "#90a4ae",
+                    "&:hover": { backgroundColor: "#eceff1" },
+                  }}
+                >
+                  <AddIcon fontSize="small" />
+                </IconButton>
+                {/* Right-side avatar for own messages */}
+                {/* No external avatar for own messages; avatar is inside bubble. */}
               </Box>
             );
           })
         )}
       </CardContent>
+      {/* Single contextual menu for like/dislike/delete */}
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor && menuMsg)}
+        onClose={closeMenu}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        transformOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <MenuItem
+          onClick={() => {
+            if (!menuMsg) return;
+            const liked = !!messageRatings[menuMsg.id]?.liked;
+            const next = {
+              ...messageRatings,
+              [menuMsg.id]: { liked: !liked, disliked: false },
+            } as Record<string, { liked: boolean; disliked: boolean }>;
+            setMessageRatings(next);
+            try {
+              localStorage.setItem(ratingsKey, JSON.stringify(next));
+            } catch {}
+            if (!liked) {
+              api
+                .post(`/notes/give_like`, null, {
+                  params: { note_id: menuMsg.id },
+                })
+                .catch(() => {});
+            }
+            closeMenu();
+          }}
+        >
+          <ThumbUpIcon
+            fontSize="small"
+            style={{
+              marginRight: 8,
+              color:
+                menuMsg && messageRatings[menuMsg.id]?.liked
+                  ? "#1565c0"
+                  : undefined,
+            }}
+          />
+          Polub
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (!menuMsg) return;
+            const disliked = !!messageRatings[menuMsg.id]?.disliked;
+            const next = {
+              ...messageRatings,
+              [menuMsg.id]: { liked: false, disliked: !disliked },
+            } as Record<string, { liked: boolean; disliked: boolean }>;
+            setMessageRatings(next);
+            try {
+              localStorage.setItem(ratingsKey, JSON.stringify(next));
+            } catch {}
+            if (!disliked) {
+              api
+                .post(`/notes/give_dislike`, null, {
+                  params: { note_id: menuMsg.id },
+                })
+                .catch(() => {});
+            }
+            closeMenu();
+          }}
+        >
+          <ThumbDownIcon
+            fontSize="small"
+            style={{
+              marginRight: 8,
+              color:
+                menuMsg && messageRatings[menuMsg.id]?.disliked
+                  ? "#c62828"
+                  : undefined,
+            }}
+          />
+          Nie lubię
+        </MenuItem>
+        {menuMsg && myId !== null && String(menuMsg.user_id) === myId && (
+          <MenuItem
+            onClick={() => {
+              if (!menuMsg) return;
+              onDeleteMessage(String(menuMsg.id));
+              closeMenu();
+            }}
+          >
+            <DeleteIcon
+              fontSize="small"
+              style={{ marginRight: 8, color: "#e53935" }}
+            />
+            Usuń
+          </MenuItem>
+        )}
+      </Menu>
       <Divider />
       <CardActions
         sx={{ p: 2, flexDirection: "column", gap: 1, backgroundColor: "white" }}

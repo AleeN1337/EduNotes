@@ -21,6 +21,8 @@ export interface Note {
   author_id: string;
   created_at: string;
   updated_at: string;
+  likes?: number;
+  dislikes?: number;
 }
 
 // Legacy note interface for backward compatibility

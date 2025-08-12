@@ -16,6 +16,7 @@ export interface Message {
   image_url?: string;
   user_id: string;
   likes?: number;
+  dislikes?: number;
 }
 
 export interface Invite {
