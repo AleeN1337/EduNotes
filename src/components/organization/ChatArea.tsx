@@ -70,7 +70,8 @@ export default function ChatArea(props: ChatAreaProps) {
       const raw = localStorage.getItem("user");
       if (!raw) return null;
       const u = JSON.parse(raw);
-      return u?.id ? String(u.id) : null;
+      const candidate = u?.id ?? u?.user_id ?? u?.data?.id ?? u?.data?.user_id;
+      return candidate != null ? String(candidate) : null;
     } catch {
       return null;
     }

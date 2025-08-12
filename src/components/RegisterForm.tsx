@@ -28,6 +28,7 @@ export default function RegisterForm({
   onSwitchToLogin,
 }: RegisterFormProps) {
   const [error, setError] = useState<string>("");
+  const [hint, setHint] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
 
   const {
@@ -42,6 +43,7 @@ export default function RegisterForm({
     try {
       setIsLoading(true);
       setError("");
+      setHint("");
 
       // Konwersja danych formularza na format API
       const registerData = {
@@ -54,14 +56,23 @@ export default function RegisterForm({
 
       // Wywołanie API
       const result = await AuthAPI.register(registerData);
-
-      if (result) {
+      if (result?.success) {
         onSuccess?.();
+      } else {
+        setError(result?.message || "Wystąpił błąd podczas rejestracji");
       }
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Wystąpił błąd podczas rejestracji"
-      );
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Wystąpił błąd podczas rejestracji";
+      setError(msg);
+      // Podpowiedź dla 422/dublikatów
+      if (/422|istnieje|zaj(et|ę)ty|exists|duplicate|unique/i.test(msg)) {
+        setHint(
+          "Wygląda na to, że konto już istnieje lub dane są nieprawidłowe. Jeśli konto istnieje — przejdź do logowania."
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -84,9 +95,25 @@ export default function RegisterForm({
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {error && (
-            <Alert severity="error" className="mb-4">
-              {error}
-            </Alert>
+            <Box className="mb-4 space-y-2">
+              <Alert severity="error">{error}</Alert>
+              {hint && (
+                <Alert severity="info">
+                  {hint}
+                  {onSwitchToLogin && (
+                    <Button
+                      size="small"
+                      variant="text"
+                      onClick={onSwitchToLogin}
+                      disabled={isLoading}
+                      sx={{ ml: 1 }}
+                    >
+                      Przejdź do logowania
+                    </Button>
+                  )}
+                </Alert>
+              )}
+            </Box>
           )}
 
           <TextField

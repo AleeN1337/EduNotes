@@ -2,28 +2,39 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
-    // Parse request body (supports JSON and URL-encoded form)
-    let firstName: string,
-      lastName: string,
-      email: string,
-      username: string,
-      password: string;
-    const contentType = request.headers.get("content-type") || "";
-    if (contentType.includes("application/x-www-form-urlencoded")) {
-      const text = await request.text();
-      const params = new URLSearchParams(text);
-      firstName = params.get("first_name") || params.get("firstName") || "";
-      lastName = params.get("last_name") || params.get("lastName") || "";
-      email = params.get("email") || "";
-      username = params.get("username") || "";
-      password = params.get("password") || "";
-    } else {
-      const body = await request.json();
-      firstName = body.firstName;
-      lastName = body.lastName;
-      email = body.email;
-      username = body.username;
-      password = body.password;
+    // Parse request body (supports JSON and URL-encoded form) with guards
+    let firstName = "";
+    let lastName = "";
+    let email = "";
+    let username = "";
+    let password = "";
+    const contentType = (
+      request.headers.get("content-type") || ""
+    ).toLowerCase();
+    try {
+      if (contentType.includes("application/x-www-form-urlencoded")) {
+        const text = await request.text();
+        const params = new URLSearchParams(text);
+        firstName = params.get("first_name") || params.get("firstName") || "";
+        lastName = params.get("last_name") || params.get("lastName") || "";
+        email = params.get("email") || "";
+        username = params.get("username") || "";
+        password = params.get("password") || "";
+      } else {
+        const body = await request.json().catch(() => null);
+        if (body && typeof body === "object") {
+          firstName = body.firstName || body.first_name || "";
+          lastName = body.lastName || body.last_name || "";
+          email = body.email || "";
+          username = body.username || "";
+          password = body.password || "";
+        }
+      }
+    } catch (e) {
+      return NextResponse.json(
+        { success: false, message: "Nieprawidłowe dane żądania" },
+        { status: 422 }
+      );
     }
 
     // Sanitize inputs: trim and normalize casing
@@ -148,6 +159,49 @@ export async function POST(request: NextRequest) {
 
       const message =
         detailMsg || errorData?.message || "Błąd podczas rejestracji (422)";
+
+      // If backend returns 5xx but user might actually be created, try to log in pragmatically
+      if (backendResponse.status >= 500 && email && password) {
+        try {
+          const loginUrl = `${backendBase}/auth/login`;
+          const loginBody = new URLSearchParams();
+          loginBody.append("username", email);
+          loginBody.append("password", password);
+          loginBody.append("grant_type", "password");
+          const loginResp = await fetch(loginUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              Accept: "application/json",
+            },
+            body: loginBody.toString(),
+          });
+          if (loginResp.ok) {
+            const loginData = await loginResp.json();
+            const token = loginData.access_token || loginData.token;
+            const normalizedUser = {
+              id: "temp",
+              email,
+              username,
+              firstName,
+              lastName,
+              avatar: null,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+            return NextResponse.json({
+              success: true,
+              token,
+              user: normalizedUser,
+              message:
+                "Rejestracja prawdopodobnie się powiodła — zalogowano automatycznie",
+            });
+          }
+        } catch (e) {
+          console.warn("Auto-login after 5xx register failed:", e);
+        }
+      }
+
       return NextResponse.json(
         {
           success: false,
@@ -158,70 +212,87 @@ export async function POST(request: NextRequest) {
     }
 
     const successText = await backendResponse.text().catch(() => "");
-    let data: any = null;
-    try {
-      data = successText ? JSON.parse(successText) : null;
-    } catch {
-      // Backend mógł zwrócić pustą odpowiedź lub nie-JSON – to akceptujemy
-    }
     console.log(
       "Backend registration success (raw):",
       successText || "<empty>"
     );
 
-    // Try to locate raw user in common shapes
-    const raw = data?.data?.user || data?.user || data?.data || data || null;
-    // Normalize to our User shape (fallback na dane wejściowe jeśli brak body)
-    const normalizedUser = {
-      id: (raw?.user_id ?? raw?.id ?? "temp").toString(),
-      email: raw?.email ?? email,
-      username:
-        raw?.username ??
-        (raw?.email ? String(raw.email).split("@")[0] : username),
-      firstName: raw?.first_name ?? raw?.firstName ?? firstName,
-      lastName: raw?.last_name ?? raw?.lastName ?? lastName,
-      avatar: raw?.avatar_url ?? raw?.avatar ?? null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    // Attempt auto-login to obtain token after successful registration
-    let token: string | undefined = undefined;
+    // Wrap normalization and auto-login to avoid throwing after successful register
     try {
-      const loginUrl = `${backendBase}/auth/login`;
-      const loginBody = new URLSearchParams();
-      // FastAPI /auth/login expects username=email
-      loginBody.append("username", email);
-      loginBody.append("password", password);
-      loginBody.append("grant_type", "password");
-
-      const loginResp = await fetch(loginUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          Accept: "application/json",
-        },
-        body: loginBody.toString(),
-      });
-      if (loginResp.ok) {
-        const loginData = await loginResp.json();
-        token = loginData.access_token || loginData.token;
-      } else {
-        console.warn(
-          "Auto-login after register failed with status:",
-          loginResp.status
-        );
+      let data: any = null;
+      try {
+        data = successText ? JSON.parse(successText) : null;
+      } catch {
+        // non-JSON body is fine
       }
-    } catch (e) {
-      console.warn("Auto-login after register threw:", e);
-    }
 
-    return NextResponse.json({
-      success: true,
-      token,
-      user: normalizedUser,
-      message: "Rejestracja przebiegła pomyślnie",
-    });
+      const raw = data?.data?.user || data?.user || data?.data || data || null;
+      const normalizedUser = {
+        id: (raw?.user_id ?? raw?.id ?? "temp").toString(),
+        email: raw?.email ?? email,
+        username:
+          raw?.username ??
+          (raw?.email ? String(raw.email).split("@")[0] : username),
+        firstName: raw?.first_name ?? raw?.firstName ?? firstName,
+        lastName: raw?.last_name ?? raw?.lastName ?? lastName,
+        avatar: raw?.avatar_url ?? raw?.avatar ?? null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // Attempt auto-login to obtain token after successful registration
+      let token: string | undefined = undefined;
+      try {
+        const loginUrl = `${backendBase}/auth/login`;
+        const loginBody = new URLSearchParams();
+        loginBody.append("username", email);
+        loginBody.append("password", password);
+        loginBody.append("grant_type", "password");
+        const loginResp = await fetch(loginUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Accept: "application/json",
+          },
+          body: loginBody.toString(),
+        });
+        if (loginResp.ok) {
+          const loginData = await loginResp.json();
+          token = loginData.access_token || loginData.token;
+        } else {
+          console.warn(
+            "Auto-login after register failed with status:",
+            loginResp.status
+          );
+        }
+      } catch (e) {
+        console.warn("Auto-login after register threw:", e);
+      }
+
+      return NextResponse.json({
+        success: true,
+        token,
+        user: normalizedUser,
+        message: "Rejestracja przebiegła pomyślnie",
+      });
+    } catch {
+      // Even if normalization/login fails, confirm registration success
+      return NextResponse.json({
+        success: true,
+        token: undefined,
+        user: {
+          id: "temp",
+          email,
+          username,
+          firstName,
+          lastName,
+          avatar: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        message: "Rejestracja przebiegła pomyślnie (bez auto-logowania)",
+      });
+    }
   } catch (error) {
     console.error("Registration error:", error);
     return NextResponse.json(

@@ -16,6 +16,7 @@ import {
 import api from "@/lib/api";
 import { unwrap, normalizeId } from "@/lib/http";
 import { UserOrganization } from "@/lib/profile";
+import { AuthAPI } from "@/lib/authApiWithFallback";
 // Child components
 import Sidebar from "@/components/organization/Sidebar";
 import TasksCard from "@/components/organization/TasksCard";
@@ -654,23 +655,51 @@ export default function OrganizationPage() {
     }
   };
 
-  // Get current user ID from localStorage
+  // Resolve current user robustly to keep chat alignment consistent for all users
   useEffect(() => {
     // load message ratings
     try {
       const stored = JSON.parse(localStorage.getItem(ratingsKey) || "{}");
       setMessageRatings(stored);
     } catch {}
-    const userJson = localStorage.getItem("user");
-    if (userJson) {
+
+    let active = true;
+    (async () => {
       try {
-        const user = JSON.parse(userJson);
-        setCurrentUserId(user.id?.toString() || null);
-        setCurrentUserName(user.name || user.username || user.email || "");
+        const user = await AuthAPI.getCurrentUser();
+        if (!active) return;
+        if (user && user.id) {
+          setCurrentUserId(String(user.id));
+          setCurrentUserName(
+            (user as any).name || user.username || user.email || ""
+          );
+          // Ensure localStorage is up-to-date with a stable id
+          try {
+            localStorage.setItem("user", JSON.stringify(user));
+          } catch {}
+          return; // done
+        }
+      } catch {}
+
+      // Fallback to localStorage if API didn't resolve
+      try {
+        const userJson = localStorage.getItem("user");
+        if (userJson) {
+          const u = JSON.parse(userJson);
+          if (u?.id) {
+            setCurrentUserId(String(u.id));
+            setCurrentUserName(u.name || u.username || u.email || "");
+          } else {
+            setCurrentUserId(null);
+          }
+        }
       } catch {
         setCurrentUserId(null);
       }
-    }
+    })();
+    return () => {
+      active = false;
+    };
   }, [ratingsKey]);
 
   // Load pending invitations

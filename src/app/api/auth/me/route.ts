@@ -68,9 +68,38 @@ export async function GET(request: NextRequest) {
             success: true,
             user: normalizedUser,
           });
+        } else {
+          // Fallback: return minimal user with id from org mapping
+          return NextResponse.json({
+            success: true,
+            user: {
+              id: String(userId),
+              email: "",
+              username: "user",
+              firstName: "",
+              lastName: "",
+              avatar: null,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          });
         }
       } catch (userError) {
         console.warn("Nie udało się pobrać danych użytkownika:", userError);
+        // Fallback: minimal user with id from org mapping
+        return NextResponse.json({
+          success: true,
+          user: {
+            id: String(userId),
+            email: "",
+            username: "user",
+            firstName: "",
+            lastName: "",
+            avatar: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
       }
     }
 
