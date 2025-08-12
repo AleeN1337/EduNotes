@@ -1,85 +1,34 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";
 import IconButton from "@mui/material/IconButton";
-// ...existing code...
-import AssignmentIcon from "@mui/icons-material/Assignment";
 import { useRouter, useParams } from "next/navigation";
 import {
   Box,
   Container,
-  Card,
-  CardHeader,
-  CardContent,
-  CardActions,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
   Button,
-  TextField,
   Typography,
-  Divider,
-  ListItemButton,
   AppBar,
   Toolbar,
-  Collapse,
-  Chip,
-  Input,
-  Avatar,
-  // ...existing code...
+  Divider,
 } from "@mui/material";
-import DeleteIcon from "@mui/icons-material/Delete";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import AddIcon from "@mui/icons-material/Add";
-import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
-import AttachFileIcon from "@mui/icons-material/AttachFile";
-import TopicIcon from "@mui/icons-material/Topic";
-import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
-import BookIcon from "@mui/icons-material/Book";
-import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import SendIcon from "@mui/icons-material/Send";
+// Icons are encapsulated in child components now
 import api from "@/lib/api";
-import ThumbUpIcon from "@mui/icons-material/ThumbUp";
-import ThumbDownIcon from "@mui/icons-material/ThumbDown";
-import { UserOrganization } from "@/lib/profileApiSimple";
-import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-interface Channel {
-  id: string;
-  channel_name: string;
-  topics?: Topic[];
-}
+import { unwrap, normalizeId } from "@/lib/http";
+import { UserOrganization } from "@/lib/profile";
+// Child components
+import Sidebar from "@/components/organization/Sidebar";
+import TasksCard from "@/components/organization/TasksCard";
+import ChatArea from "@/components/organization/ChatArea";
+import {
+  Channel,
+  Topic,
+  Message,
+  Invite,
+  Task,
+} from "@/components/organization/types";
 
-interface Topic {
-  id: string;
-  topic_name: string;
-  channel_id: string;
-}
-
-interface Message {
-  id: string;
-  content: string;
-  created_at: string;
-  image_url?: string;
-  user_id: string;
-}
-interface Invite {
-  id: string;
-  email: string;
-  status: string;
-  invited_at: string;
-}
-
-interface Task {
-  id: string;
-  title: string;
-  due_date: string;
-}
+// Types moved to shared file
 
 export default function OrganizationPage() {
   // Unwrap dynamic route params
@@ -109,6 +58,7 @@ export default function OrganizationPage() {
   const [messageRatings, setMessageRatings] = useState<
     Record<string, { liked: boolean; disliked: boolean }>
   >({});
+  const ratingsKey = `messageRatings_${orgId}`;
   const [activeTab, setActiveTab] = useState(0);
   const [addingTopicToChannel, setAddingTopicToChannel] = useState<
     string | null
@@ -194,10 +144,10 @@ export default function OrganizationPage() {
       .get(`/channels/channels_in_organization?organization_id=${orgId}`)
       .then((res) => {
         // Unwrap wrapper if present
-        const raw = Array.isArray(res.data) ? res.data : res.data.data ?? [];
+        const raw = Array.isArray(res.data) ? res.data : unwrap<any[]>(res);
         const normalizedChannels = (raw as any[]).map((c: any) => ({
           ...c,
-          id: String(c.id ?? c.channel_id),
+          id: normalizeId(c, ["id", "channel_id"]),
         }));
         setChannels(normalizedChannels);
 
@@ -237,9 +187,9 @@ export default function OrganizationPage() {
         `/topics/topics_in_channel?channel_id=${channelId}`
       );
       // Unwrap wrapper if present
-      const raw = Array.isArray(res.data) ? res.data : res.data.data ?? [];
+      const raw = Array.isArray(res.data) ? res.data : unwrap<any[]>(res);
       const normalizedTopics: Topic[] = (raw as any[]).map((t: any) => ({
-        id: String(t.id ?? t.topic_id),
+        id: normalizeId(t, ["id", "topic_id"]),
         topic_name: t.topic_name,
         channel_id: channelId,
       }));
@@ -382,24 +332,28 @@ export default function OrganizationPage() {
     // This logic is now handled in the topic loading useEffect
   }, [selectedTopic]);
 
+  // Helpers to map/fetch messages
+  const mapNotesToMessages = (raw: any[]): Message[] =>
+    (raw as any[]).map((m: any) => ({
+      id: normalizeId(m, ["note_id", "id"]),
+      content: m.content,
+      created_at: m.created_at,
+      image_url: m.image_url,
+      user_id: normalizeId(m, ["user_id"]),
+      likes: typeof m.likes === "number" ? m.likes : 0,
+    }));
+
+  async function fetchMessagesForTopic(topicId: string) {
+    const res = await api.get(`/notes/notes_in_topic?topic_id=${topicId}`);
+    const raw = Array.isArray(res.data) ? res.data : unwrap<any[]>(res);
+    return mapNotesToMessages(raw);
+  }
+
   // Load messages when topic selected
   useEffect(() => {
     if (selectedTopic) {
-      api
-        .get(`/notes/notes_in_topic?topic_id=${selectedTopic}`)
-        .then((res) => {
-          // Unwrap wrapper if present
-          const raw = Array.isArray(res.data) ? res.data : res.data.data ?? [];
-          // Normalize notes into Message shape
-          const normalized = (raw as any[]).map((m: any) => ({
-            id: String(m.note_id ?? m.id),
-            content: m.content,
-            created_at: m.created_at,
-            image_url: m.image_url,
-            user_id: String(m.user_id),
-          }));
-          setMessages(normalized);
-        })
+      fetchMessagesForTopic(selectedTopic)
+        .then(setMessages)
         .catch((error) => {
           // If it's a 404, it likely means no messages in this topic - set empty array
           if (error.response?.status === 404) {
@@ -417,19 +371,8 @@ export default function OrganizationPage() {
   useEffect(() => {
     if (!selectedTopic) return;
     const interval = setInterval(() => {
-      api
-        .get(`/notes/notes_in_topic?topic_id=${selectedTopic}`)
-        .then((res) => {
-          const raw = Array.isArray(res.data) ? res.data : res.data.data ?? [];
-          const normalized = (raw as any[]).map((m: any) => ({
-            id: String(m.note_id ?? m.id),
-            content: m.content,
-            created_at: m.created_at,
-            image_url: m.image_url,
-            user_id: String(m.user_id),
-          }));
-          setMessages(normalized);
-        })
+      fetchMessagesForTopic(selectedTopic)
+        .then(setMessages)
         .catch((error) => {
           if (error.response?.status === 404) {
             setMessages([]);
@@ -458,10 +401,10 @@ export default function OrganizationPage() {
 
       const rawChannels = Array.isArray(channelsResponse.data)
         ? channelsResponse.data
-        : channelsResponse.data.data ?? [];
+        : unwrap<any[]>(channelsResponse);
       const updatedChannels = (rawChannels as any[]).map((c: any) => ({
         ...c,
-        id: String(c.id ?? c.channel_id),
+        id: normalizeId(c, ["id", "channel_id"]),
       }));
       setChannels(updatedChannels);
 
@@ -474,10 +417,10 @@ export default function OrganizationPage() {
       );
       const rawChannels = Array.isArray(channelsResponse.data)
         ? channelsResponse.data
-        : channelsResponse.data.data ?? [];
+        : unwrap<any[]>(channelsResponse);
       const updatedChannels = (rawChannels as any[]).map((c: any) => ({
         ...c,
-        id: String(c.id ?? c.channel_id),
+        id: normalizeId(c, ["id", "channel_id"]),
       }));
       setChannels(updatedChannels);
       setNewChannelName("");
@@ -511,10 +454,10 @@ export default function OrganizationPage() {
       // Unwrap list from possible wrapper
       const rawTopics = Array.isArray(topicsResponse.data)
         ? topicsResponse.data
-        : topicsResponse.data.data ?? [];
+        : unwrap<any[]>(topicsResponse);
       const normalizedTopics = rawTopics.map((t: any) => ({
         ...t,
-        id: String(t.id ?? t.topic_id),
+        id: normalizeId(t, ["id", "topic_id"]),
         topic_name: t.topic_name,
         channel_id: channelId,
       }));
@@ -535,10 +478,10 @@ export default function OrganizationPage() {
         );
         const rawTopics = Array.isArray(topicsResponse.data)
           ? topicsResponse.data
-          : topicsResponse.data.data ?? [];
+          : unwrap<any[]>(topicsResponse);
         const normalizedTopics = rawTopics.map((t: any) => ({
           ...t,
-          id: String(t.id ?? t.topic_id),
+          id: normalizeId(t, ["id", "topic_id"]),
           topic_name: t.topic_name,
           channel_id: channelId,
         }));
@@ -583,13 +526,7 @@ export default function OrganizationPage() {
 
       setNewMessage("");
       // Reload notes in topic
-      const res = await api.get(
-        `/notes/notes_in_topic?topic_id=${selectedTopic}`
-      );
-      const rawMessages = Array.isArray(res.data)
-        ? res.data
-        : res.data.data ?? [];
-      setMessages(rawMessages as any[]);
+      setMessages(await fetchMessagesForTopic(selectedTopic));
     } catch (error: any) {
       console.error("Error sending message:", error);
       if (error.response?.status === 422) {
@@ -645,15 +582,16 @@ export default function OrganizationPage() {
       const res = await api.get(
         `/channels/channels_in_organization?organization_id=${orgId}`
       );
-      const normalizedChannels = res.data.map((c: any) => ({
+      const raw = Array.isArray(res.data) ? res.data : unwrap<any[]>(res);
+      const normalizedChannels = (raw as any[]).map((c: any) => ({
         ...c,
-        id: String(c.id ?? c.channel_id),
+        id: normalizeId(c, ["id", "channel_id"]),
       }));
       setChannels(normalizedChannels);
 
       // Clear topics state for deleted channel
       setChannelTopics((prev) => {
-        const newTopics = { ...prev };
+        const newTopics = { ...prev } as Record<string, Topic[]>;
         delete newTopics[channelId];
         return newTopics;
       });
@@ -709,20 +647,7 @@ export default function OrganizationPage() {
       await api.delete(`/notes/${messageId}`);
       // Reload messages
       if (selectedTopic) {
-        const res = await api.get(
-          `/notes/notes_in_topic?topic_id=${selectedTopic}`
-        );
-        // Unwrap wrapper if present
-        const raw = Array.isArray(res.data) ? res.data : res.data.data ?? [];
-        // Normalize notes into Message shape
-        const normalized = (raw as any[]).map((m: any) => ({
-          id: String(m.note_id ?? m.id),
-          content: m.content,
-          created_at: m.created_at,
-          image_url: m.image_url,
-          user_id: String(m.user_id),
-        }));
-        setMessages(normalized);
+        setMessages(await fetchMessagesForTopic(selectedTopic));
       }
     } catch (error) {
       console.error("Error deleting message:", error);
@@ -733,7 +658,7 @@ export default function OrganizationPage() {
   useEffect(() => {
     // load message ratings
     try {
-      const stored = JSON.parse(localStorage.getItem("messageRatings") || "{}");
+      const stored = JSON.parse(localStorage.getItem(ratingsKey) || "{}");
       setMessageRatings(stored);
     } catch {}
     const userJson = localStorage.getItem("user");
@@ -746,14 +671,14 @@ export default function OrganizationPage() {
         setCurrentUserId(null);
       }
     }
-  }, []);
+  }, [ratingsKey]);
 
   // Load pending invitations
   const loadPendingInvites = async () => {
     try {
       // Retrieve all sent invitations and filter for this organization
       const res = await api.get(`/organization-invitations/sent`);
-      const raw = Array.isArray(res.data) ? res.data : res.data.data ?? [];
+      const raw = Array.isArray(res.data) ? res.data : unwrap<any[]>(res);
       // Filter for current org and pending status, map invitation fields
       const invites: Invite[] = (raw as any[])
         .filter(
@@ -806,7 +731,7 @@ export default function OrganizationPage() {
   useEffect(() => {
     // Assign a unique color to each user encountered in messages
     let updated = false;
-    const updatedColors = { ...userColors };
+    const updatedColors = { ...userColors } as Record<string, string>;
     messages.forEach((msg) => {
       if (!updatedColors[msg.user_id]) {
         const idx = Object.keys(updatedColors).length % colorOptions.length;
@@ -915,455 +840,55 @@ export default function OrganizationPage() {
             overflow: "hidden",
           }}
         >
-          <Card
-            sx={{
-              flex: 1,
-              borderRadius: 0,
-              boxShadow: "none",
-              display: "flex",
-              flexDirection: "column",
+          <Sidebar
+            channels={channels}
+            expanded={expandedChannels}
+            channelTopics={channelTopics}
+            selectedChannel={selectedChannel}
+            selectedTopic={selectedTopic}
+            addingTopicToChannel={addingTopicToChannel}
+            deletingChannel={deletingChannel}
+            newChannelName={newChannelName}
+            newTopicName={newTopicName}
+            onToggleChannel={(id) => {
+              setSelectedChannel(id);
+              toggleChannelExpansion(id);
             }}
-          >
-            <CardHeader
-              avatar={<BookIcon sx={{ color: "#2c3e50" }} />}
-              title={
-                <Typography
-                  variant="h6"
-                  sx={{ fontWeight: 600, color: "#2c3e50" }}
-                >
-                  Przedmioty i Tematy
-                </Typography>
-              }
-              sx={{
-                pb: 1,
-                backgroundColor: "white",
-                borderBottom: "1px solid #e0e0e0",
-              }}
-            />
-            <CardContent sx={{ pt: 1, flex: 1, overflow: "auto" }}>
-              <List sx={{ py: 0 }}>
-                {channels.map((ch) => {
-                  const cid = String(ch.id ?? (ch as any).channel_id);
-                  const isExpanded = expandedChannels[cid] || false;
-                  const channelTopicsData = channelTopics[cid] || [];
-
-                  return (
-                    <Box key={cid} sx={{ mb: 1 }}>
-                      {/* Channel Header */}
-                      <ListItemButton
-                        onClick={() => {
-                          setSelectedChannel(cid);
-                          toggleChannelExpansion(cid);
-                        }}
-                        sx={{
-                          borderRadius: 2,
-                          backgroundColor:
-                            selectedChannel === cid ? "#e3f2fd" : "transparent",
-                          "&:hover": {
-                            backgroundColor: "#f5f5f5",
-                          },
-                        }}
-                      >
-                        <ListItemIcon sx={{ minWidth: 32 }}>
-                          {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={
-                            <Box
-                              sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 1,
-                              }}
-                            >
-                              <Typography
-                                variant="subtitle1"
-                                sx={{ fontWeight: 600 }}
-                              >
-                                {ch.channel_name}
-                              </Typography>
-                            </Box>
-                          }
-                        />
-                        <IconButton
-                          edge="end"
-                          size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setAddingTopicToChannel(cid);
-                            // Ensure the channel is expanded when adding a topic
-                            setExpandedChannels((prev) => ({
-                              ...prev,
-                              [cid]: true,
-                            }));
-                          }}
-                          sx={{
-                            mr: 1,
-                            color: "#27ae60",
-                            "&:hover": {
-                              backgroundColor: "#27ae60",
-                              color: "white",
-                            },
-                          }}
-                        >
-                          <AddIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          edge="end"
-                          size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteChannel(cid);
-                          }}
-                          disabled={deletingChannel === cid}
-                          sx={{
-                            color: "#e74c3c",
-                            "&:hover": {
-                              backgroundColor: "#e74c3c",
-                              color: "white",
-                            },
-                          }}
-                        >
-                          {deletingChannel === cid ? (
-                            <HourglassEmptyIcon fontSize="small" />
-                          ) : (
-                            <DeleteIcon fontSize="small" />
-                          )}
-                        </IconButton>
-                      </ListItemButton>
-
-                      {/* Topics List - Collapsible */}
-                      <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                        <List sx={{ pl: 2, py: 0 }}>
-                          {/* Add Topic Form */}
-                          {addingTopicToChannel === cid && (
-                            <Box
-                              sx={{
-                                p: 2,
-                                backgroundColor: "#f0f8ff",
-                                borderRadius: 2,
-                                mb: 1,
-                                border: "1px solid #e3f2fd",
-                              }}
-                            >
-                              <TextField
-                                fullWidth
-                                size="small"
-                                placeholder="Nazwa nowego tematu"
-                                value={newTopicName}
-                                onChange={(e) =>
-                                  setNewTopicName(e.target.value)
-                                }
-                                onKeyPress={(e) => {
-                                  if (e.key === "Enter") {
-                                    handleAddTopicToChannel(cid);
-                                  }
-                                  if (e.key === "Escape") {
-                                    setAddingTopicToChannel(null);
-                                    setNewTopicName("");
-                                  }
-                                }}
-                                sx={{ mb: 1 }}
-                                autoFocus
-                              />
-                              <Box sx={{ display: "flex", gap: 1 }}>
-                                <Button
-                                  size="small"
-                                  variant="contained"
-                                  onClick={() => handleAddTopicToChannel(cid)}
-                                  startIcon={<AddIcon />}
-                                  sx={{
-                                    backgroundColor: "#27ae60",
-                                    "&:hover": { backgroundColor: "#219a52" },
-                                  }}
-                                >
-                                  Dodaj
-                                </Button>
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  onClick={() => {
-                                    setAddingTopicToChannel(null);
-                                    setNewTopicName("");
-                                  }}
-                                >
-                                  Anuluj
-                                </Button>
-                              </Box>
-                            </Box>
-                          )}
-
-                          {channelTopicsData.map((topic) => (
-                            <Box
-                              key={topic.id}
-                              sx={{ display: "flex", alignItems: "center" }}
-                            >
-                              <ListItemButton
-                                onClick={() => handleTopicClick(topic, ch)}
-                                sx={{
-                                  borderRadius: 2,
-                                  mb: 0.5,
-                                  ml: 2,
-                                  backgroundColor:
-                                    selectedTopic === topic.id
-                                      ? "#fff3e0"
-                                      : "transparent",
-                                  "&:hover": {
-                                    backgroundColor:
-                                      selectedTopic === topic.id
-                                        ? "#ffe0b2"
-                                        : "#f5f5f5",
-                                  },
-                                  flex: 1,
-                                }}
-                              >
-                                <ListItemIcon sx={{ minWidth: 32 }}>
-                                  <TopicIcon
-                                    fontSize="small"
-                                    sx={{ color: "#ff9800" }}
-                                  />
-                                </ListItemIcon>
-                                <ListItemText
-                                  primary={topic.topic_name}
-                                  primaryTypographyProps={{
-                                    fontWeight:
-                                      selectedTopic === topic.id ? 600 : 400,
-                                    fontSize: "0.9rem",
-                                  }}
-                                />
-                              </ListItemButton>
-                              <IconButton
-                                size="small"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteTopic(topic.id);
-                                }}
-                                sx={{
-                                  mr: 1,
-                                  color: "#e74c3c",
-                                  "&:hover": {
-                                    backgroundColor: "#e74c3c",
-                                    color: "white",
-                                  },
-                                }}
-                              >
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
-                            </Box>
-                          ))}
-                        </List>
-                      </Collapse>
-                    </Box>
-                  );
-                })}
-              </List>
-            </CardContent>
-            <Divider />
-            <CardActions sx={{ p: 2, backgroundColor: "white" }}>
-              <TextField
-                fullWidth
-                size="small"
-                placeholder="Nowy przedmiot"
-                value={newChannelName}
-                onChange={(e) => setNewChannelName(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && handleAddChannel()}
-                sx={{ mr: 1 }}
-              />
-              <Button
-                variant="contained"
-                onClick={handleAddChannel}
-                sx={{
-                  borderRadius: 2,
-                  textTransform: "none",
-                  fontWeight: 500,
-                  backgroundColor: "#2c3e50",
-                  "&:hover": { backgroundColor: "#34495e" },
-                }}
-              >
-                Dodaj
-              </Button>
-            </CardActions>
-
-            {/* Invitations Section in Sidebar */}
-            <Box
-              sx={{
-                p: 2,
-                backgroundColor: "white",
-                borderTop: "1px solid #e0e0e0",
-              }}
-            >
-              <Typography
-                variant="subtitle2"
-                sx={{ mb: 1, fontWeight: 600, color: "#2c3e50" }}
-              >
-                Zaproszenia
-              </Typography>
-              <Box sx={{ display: "flex", gap: 1, mb: 1 }}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  placeholder="Email użytkownika"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && handleSendInvite()}
-                />
-                <IconButton
-                  onClick={() => handleSendInvite()}
-                  sx={{
-                    color: "#3498db",
-                    "&:hover": { backgroundColor: "#3498db", color: "white" },
-                  }}
-                >
-                  <PersonAddIcon fontSize="small" />
-                </IconButton>
-              </Box>
-              {pendingInvites.length > 0 && (
-                <Typography variant="caption" color="text.secondary">
-                  {pendingInvites.length} oczekujących zaproszeń
-                </Typography>
-              )}
-            </Box>
-          </Card>
+            onSelectTopic={handleTopicClick}
+            onSetAddingTopicToChannel={setAddingTopicToChannel}
+            onChangeTopicName={setNewTopicName}
+            onAddTopicToChannel={handleAddTopicToChannel}
+            onDeleteTopic={handleDeleteTopic}
+            onDeleteChannel={handleDeleteChannel}
+            onChangeChannelName={setNewChannelName}
+            onAddChannel={handleAddChannel}
+            inviteEmail={inviteEmail}
+            onChangeInviteEmail={setInviteEmail}
+            onSendInvite={handleSendInvite}
+            pendingInvitesCount={pendingInvites.length}
+          />
         </Box>
 
         {/* Main Chat Area */}
         <Box
           sx={{ display: "flex", flexDirection: "column", overflow: "hidden" }}
         >
-          {/* Zadania/Egzaminów/Kolosów */}
-          <Card sx={{ mb: 2, mx: 2 }}>
-            <CardHeader
-              title={
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <AssignmentIcon sx={{ color: "#1976d2" }} />
-                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                    Zadania
-                  </Typography>
-                </Box>
-              }
-              action={
-                <IconButton
-                  color="primary"
-                  aria-label="Dodaj zadanie"
-                  onClick={() => setAddingTask(true)}
-                >
-                  <AddIcon />
-                </IconButton>
-              }
-            />
-            <List sx={{ maxHeight: 200, overflow: "auto" }}>
-              {tasks.length === 0 ? (
-                <ListItem>
-                  <ListItemText
-                    primary={
-                      <Typography color="text.secondary">Brak zadań</Typography>
-                    }
-                  />
-                </ListItem>
-              ) : (
-                tasks.map((task) => {
-                  const due = new Date(task.due_date);
-                  const now = new Date();
-                  const msDiff = due.getTime() - now.getTime();
-                  const isSoon = msDiff < 1000 * 60 * 60 * 24 && msDiff > 0;
-                  return (
-                    <ListItem
-                      key={task.id}
-                      sx={{ py: 0.5 }}
-                      secondaryAction={
-                        <IconButton
-                          edge="end"
-                          aria-label="usuń"
-                          onClick={() => handleDeleteTask(task.id)}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      }
-                    >
-                      <ListItemIcon>
-                        <AssignmentIcon color="action" />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={
-                          <Box
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 1,
-                            }}
-                          >
-                            <Typography sx={{ fontWeight: 500 }}>
-                              {task.title}
-                            </Typography>
-                            {isSoon && (
-                              <WarningAmberIcon
-                                sx={{ color: "error.main" }}
-                                titleAccess="Termin zadania mija w ciągu 24h!"
-                              />
-                            )}
-                          </Box>
-                        }
-                        secondary={due.toLocaleString()}
-                      />
-                    </ListItem>
-                  );
-                })
-              )}
-            </List>
-            {/* ...existing code... */}
-            {/* ...existing code... */}
-            {/* Dialog for adding task */}
-            <Dialog
-              open={addingTask}
-              onClose={() => setAddingTask(false)}
-              maxWidth="xs"
-              fullWidth
-            >
-              <DialogTitle>Dodaj nowe zadanie</DialogTitle>
-              <DialogContent
-                sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2 }}
-              >
-                <TextField
-                  label="Nazwa zadania"
-                  value={newTaskTitle}
-                  onChange={(e) => setNewTaskTitle(e.target.value)}
-                  autoFocus
-                  fullWidth
-                />
-                <Box sx={{ display: "flex", gap: 2 }}>
-                  <TextField
-                    label="Data"
-                    type="date"
-                    value={newTaskDate}
-                    onChange={(e) => setNewTaskDate(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                    fullWidth
-                  />
-                  <TextField
-                    label="Godzina"
-                    type="time"
-                    value={newTaskTime}
-                    onChange={(e) => setNewTaskTime(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                    fullWidth
-                  />
-                </Box>
-                {taskError && (
-                  <Typography color="error" variant="body2">
-                    {taskError}
-                  </Typography>
-                )}
-              </DialogContent>
-              <DialogActions>
-                <Button onClick={() => setAddingTask(false)} color="secondary">
-                  Anuluj
-                </Button>
-                <Button onClick={handleAddTask} variant="contained">
-                  Dodaj
-                </Button>
-              </DialogActions>
-            </Dialog>
-          </Card>
+          {/* Zadania */}
+          <TasksCard
+            tasks={tasks}
+            onDelete={handleDeleteTask}
+            onOpenAdd={() => setAddingTask(true)}
+            adding={addingTask}
+            onCloseAdd={() => setAddingTask(false)}
+            newTaskTitle={newTaskTitle}
+            newTaskDate={newTaskDate}
+            newTaskTime={newTaskTime}
+            onChangeTitle={setNewTaskTitle}
+            onChangeDate={setNewTaskDate}
+            onChangeTime={setNewTaskTime}
+            onSubmit={() => handleAddTask()}
+            error={taskError}
+          />
           {/* End Zadania section */}
 
           {/* Main Chat Area */}
@@ -1374,350 +899,28 @@ export default function OrganizationPage() {
               overflow: "hidden",
             }}
           >
-            <Card
-              sx={{
-                flex: 1,
-                borderRadius: 0,
-                boxShadow: "none",
-                display: "flex",
-                flexDirection: "column",
-              }}
-            >
-              <CardHeader
-                avatar={<ChatBubbleOutlineIcon sx={{ color: "#3498db" }} />}
-                title={
-                  <Typography
-                    variant="h6"
-                    sx={{ fontWeight: 600, color: "#2c3e50" }}
-                  >
-                    {selectedTopic
-                      ? `${getCurrentChannelName()} - ${getCurrentTopicName()}`
-                      : "Czat (wybierz temat)"}
-                  </Typography>
-                }
-                sx={{
-                  pb: 1,
-                  backgroundColor: "white",
-                  borderBottom: "1px solid #e0e0e0",
-                }}
-              />
-              <CardContent
-                sx={{
-                  flex: 1,
-                  overflowY: "auto",
-                  pt: 1,
-                  backgroundColor: "#fafafa",
-                }}
-              >
-                {!selectedTopic ? (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      height: "100%",
-                      color: "text.secondary",
-                    }}
-                  >
-                    <Typography variant="body2">
-                      📝 Wybierz temat aby zobaczyć wiadomości
-                    </Typography>
-                  </Box>
-                ) : messages.length === 0 ? (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      height: "100%",
-                      color: "text.secondary",
-                    }}
-                  >
-                    <Typography variant="body2">
-                      💬 Brak wiadomości w tym temacie. Napisz pierwszą!
-                    </Typography>
-                  </Box>
-                ) : (
-                  messages.map((msg) => {
-                    const isOwn = String(msg.user_id) === currentUserId;
-                    return (
-                      <Box
-                        key={msg.id}
-                        sx={{
-                          width: "100%",
-                          display: "flex",
-                          justifyContent: isOwn ? "flex-start" : "flex-end",
-                          alignItems: "flex-start",
-                          mb: 2,
-                          gap: 1,
-                        }}
-                      >
-                        {/* Avatar for non-own messages */}
-                        {!isOwn && (
-                          <Avatar
-                            sx={{
-                              width: 32,
-                              height: 32,
-                              backgroundColor:
-                                userColors[msg.user_id] ?? "#bdbdbd",
-                              fontSize: "0.75rem",
-                              fontWeight: 600,
-                            }}
-                          >
-                            {getUserInitials(msg.user_id)}
-                          </Avatar>
-                        )}
-
-                        {/* Message Bubble */}
-                        <Box
-                          sx={{
-                            p: 2,
-                            maxWidth: "70%",
-                            width: "auto",
-                            backgroundColor:
-                              userColors[msg.user_id] ?? "#e0e0e0",
-                            color: "#2c3e50",
-                            borderRadius: isOwn
-                              ? "18px 18px 4px 18px"
-                              : "18px 18px 18px 4px",
-                            whiteSpace: "pre-wrap",
-                            wordBreak: "break-word",
-                            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-                          }}
-                        >
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                            {msg.content}
-                          </Typography>
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            sx={{ display: "block", mt: 0.5, opacity: 0.7 }}
-                          >
-                            {new Date(msg.created_at).toLocaleTimeString()}
-                          </Typography>
-                        </Box>
-
-                        {/* Rating buttons */}
-                        <Box
-                          sx={{
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: isOwn ? "flex-start" : "flex-end",
-                            gap: 0.5,
-                            mt: 0.5,
-                          }}
-                        >
-                          <IconButton
-                            size="small"
-                            color={
-                              messageRatings[msg.id]?.liked
-                                ? "primary"
-                                : "default"
-                            }
-                            onClick={() => {
-                              setMessageRatings((prev) => {
-                                const curr = prev[msg.id] || {
-                                  liked: false,
-                                  disliked: false,
-                                };
-                                const updated = {
-                                  liked: !curr.liked,
-                                  disliked: curr.liked
-                                    ? curr.disliked
-                                    : curr.disliked,
-                                };
-                                const newAll = { ...prev, [msg.id]: updated };
-                                localStorage.setItem(
-                                  "messageRatings",
-                                  JSON.stringify(newAll)
-                                );
-                                return newAll;
-                              });
-                            }}
-                          >
-                            <ThumbUpIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            color={
-                              messageRatings[msg.id]?.disliked
-                                ? "error"
-                                : "default"
-                            }
-                            onClick={() => {
-                              setMessageRatings((prev) => {
-                                const curr = prev[msg.id] || {
-                                  liked: false,
-                                  disliked: false,
-                                };
-                                const updated = {
-                                  disliked: !curr.disliked,
-                                  liked: curr.disliked
-                                    ? curr.liked
-                                    : curr.liked,
-                                };
-                                const newAll = { ...prev, [msg.id]: updated };
-                                localStorage.setItem(
-                                  "messageRatings",
-                                  JSON.stringify(newAll)
-                                );
-                                return newAll;
-                              });
-                            }}
-                          >
-                            <ThumbDownIcon fontSize="small" />
-                          </IconButton>
-                        </Box>
-
-                        {/* Avatar and delete for own messages */}
-                        {isOwn && (
-                          <>
-                            <IconButton
-                              size="small"
-                              onClick={() => handleDeleteMessage(msg.id)}
-                              sx={{
-                                opacity: 0.6,
-                                "&:hover": {
-                                  backgroundColor: "#e74c3c",
-                                  color: "white",
-                                  opacity: 1,
-                                },
-                              }}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                            <Avatar
-                              sx={{
-                                width: 32,
-                                height: 32,
-                                backgroundColor:
-                                  userColors[msg.user_id] ?? "#bdbdbd",
-                                fontSize: "0.75rem",
-                                fontWeight: 600,
-                              }}
-                            >
-                              {getUserInitials(msg.user_id)}
-                            </Avatar>
-                          </>
-                        )}
-                      </Box>
-                    );
-                  })
-                )}
-              </CardContent>
-              <Divider />
-              <CardActions
-                sx={{
-                  p: 2,
-                  flexDirection: "column",
-                  gap: 1,
-                  backgroundColor: "white",
-                }}
-              >
-                {/* File Preview */}
-                {selectedFile && (
-                  <Box
-                    sx={{
-                      width: "100%",
-                      p: 1,
-                      backgroundColor: "#f0f8ff",
-                      borderRadius: 1,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      border: "1px solid #e3f2fd",
-                    }}
-                  >
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      📎 {selectedFile.name}
-                    </Typography>
-                    <IconButton
-                      size="small"
-                      onClick={() => setSelectedFile(null)}
-                      sx={{
-                        "&:hover": {
-                          backgroundColor: "#e74c3c",
-                          color: "white",
-                        },
-                      }}
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
-                )}
-
-                {/* Message Input Row */}
-                <Box
-                  sx={{
-                    display: "flex",
-                    width: "100%",
-                    gap: 1,
-                    alignItems: "center",
-                  }}
-                >
-                  <TextField
-                    fullWidth
-                    size="small"
-                    placeholder={
-                      selectedTopic
-                        ? "Napisz wiadomość..."
-                        : "Wybierz temat aby pisać wiadomości"
-                    }
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={(e) =>
-                      e.key === "Enter" && selectedTopic && handleSendMessage()
-                    }
-                    disabled={!selectedTopic}
-                    sx={{
-                      "& .MuiOutlinedInput-root": {
-                        borderRadius: "20px",
-                      },
-                    }}
-                  />
-
-                  {/* File Upload Button */}
-                  <input
-                    accept="image/*,application/pdf,.doc,.docx,.txt"
-                    style={{ display: "none" }}
-                    id="file-upload"
-                    type="file"
-                    onChange={handleFileSelect}
-                  />
-                  <label htmlFor="file-upload">
-                    <IconButton
-                      component="span"
-                      sx={{
-                        color: "#7f8c8d",
-                        "&:hover": {
-                          backgroundColor: "#ecf0f1",
-                          color: "#2c3e50",
-                        },
-                      }}
-                    >
-                      <AttachFileIcon />
-                    </IconButton>
-                  </label>
-
-                  <Button
-                    variant="contained"
-                    onClick={handleSendMessage}
-                    disabled={!selectedTopic || !newMessage.trim()}
-                    startIcon={<SendIcon />}
-                    sx={{
-                      borderRadius: "20px",
-                      textTransform: "none",
-                      fontWeight: 500,
-                      minWidth: "80px",
-                      backgroundColor: "#3498db",
-                      "&:hover": { backgroundColor: "#2980b9" },
-                    }}
-                  >
-                    Wyślij
-                  </Button>
-                </Box>
-              </CardActions>
-            </Card>
+            <ChatArea
+              title={
+                selectedTopic
+                  ? `${getCurrentChannelName()} - ${getCurrentTopicName()}`
+                  : "Czat (wybierz temat)"
+              }
+              messages={messages}
+              currentUserId={currentUserId}
+              userColors={userColors}
+              getUserInitials={getUserInitials}
+              selectedFile={selectedFile}
+              onRemoveFile={() => setSelectedFile(null)}
+              newMessage={newMessage}
+              onChangeMessage={setNewMessage}
+              canSend={Boolean(selectedTopic)}
+              onSend={handleSendMessage}
+              onDeleteMessage={handleDeleteMessage}
+              onFileSelect={handleFileSelect}
+              messageRatings={messageRatings}
+              setMessageRatings={setMessageRatings}
+              ratingsKey={ratingsKey}
+            />
           </Box>
         </Box>
       </Box>

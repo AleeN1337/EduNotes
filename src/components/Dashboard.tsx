@@ -15,7 +15,7 @@ import {
   UserStats,
   UserOrganization,
   ChangePasswordData,
-} from "@/lib/profileApiSimple";
+} from "@/lib/profile";
 import { User } from "@/types";
 import { useRouter } from "next/navigation";
 import { Typewriter } from "react-simple-typewriter";

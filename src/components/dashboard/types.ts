@@ -1,5 +1,5 @@
 import { User } from "@/types";
-import { UserOrganization, UserStats } from "@/lib/profileApiSimple";
+import { UserOrganization, UserStats } from "@/lib/profile";
 
 export interface DashboardProps {
   user: User;
