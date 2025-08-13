@@ -151,16 +151,16 @@ export default function Sidebar(props: SidebarProps) {
       }}
     >
       <CardHeader
-        avatar={<BookIcon sx={{ color: "#2c3e50" }} />}
+        avatar={<BookIcon sx={{ color: "var(--foreground)" }} />}
         title={
-          <Typography variant="h6" sx={{ fontWeight: 600, color: "#2c3e50" }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, color: "var(--foreground)" }}>
             Przedmioty i Tematy
           </Typography>
         }
         sx={{
           pb: 1,
-          backgroundColor: "white",
-          borderBottom: "1px solid #e0e0e0",
+          backgroundColor: "var(--card)",
+          borderBottom: "1px solid var(--border)",
         }}
       />
       <CardContent sx={{ pt: 1, flex: 1, overflow: "auto" }}>
@@ -211,8 +211,8 @@ export default function Sidebar(props: SidebarProps) {
                   sx={{
                     borderRadius: 2,
                     backgroundColor:
-                      selectedChannel === cid ? "#e3f2fd" : "transparent",
-                    "&:hover": { backgroundColor: "#f5f5f5" },
+                      selectedChannel === cid ? "var(--secondary)" : "transparent",
+                    "&:hover": { backgroundColor: "var(--muted)" },
                   }}
                 >
                   <ListItemIcon sx={{ minWidth: 32 }}>
@@ -248,14 +248,14 @@ export default function Sidebar(props: SidebarProps) {
                       </Box>
                     }
                   />
-                  <Tooltip title="Więcej">
+      <Tooltip title="Więcej">
                     <IconButton
                       edge="end"
                       size="small"
                       onClick={(e) => openChannelMenu(e, cid)}
                       sx={{
-                        color: "#607d8b",
-                        "&:hover": { backgroundColor: "#eceff1" },
+        color: "var(--muted-foreground)",
+        "&:hover": { backgroundColor: "var(--muted)" },
                       }}
                     >
                       <MoreVertIcon fontSize="small" />
@@ -264,15 +264,15 @@ export default function Sidebar(props: SidebarProps) {
                 </ListItemButton>
 
                 <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                  <List sx={{ pl: 2, py: 0 }}>
+      <List sx={{ pl: 2, py: 0 }}>
                     {addingTopicToChannel === cid && (
                       <Box
                         sx={{
-                          p: 2,
-                          backgroundColor: "#f0f8ff",
+        p: 2,
+        backgroundColor: "var(--secondary)",
                           borderRadius: 2,
                           mb: 1,
-                          border: "1px solid #e3f2fd",
+        border: "1px solid var(--border)",
                         }}
                       >
                         <TextField
@@ -321,13 +321,10 @@ export default function Sidebar(props: SidebarProps) {
                             ml: 2,
                             backgroundColor:
                               selectedTopic === topic.id
-                                ? "#fff3e0"
+                                ? "var(--secondary)"
                                 : "transparent",
                             "&:hover": {
-                              backgroundColor:
-                                selectedTopic === topic.id
-                                  ? "#ffe0b2"
-                                  : "#f5f5f5",
+                              backgroundColor: "var(--muted)",
                             },
                             flex: 1,
                           }}
@@ -335,7 +332,7 @@ export default function Sidebar(props: SidebarProps) {
                           <ListItemIcon sx={{ minWidth: 32 }}>
                             <TopicIcon
                               fontSize="small"
-                              sx={{ color: "#ff9800" }}
+                              sx={{ color: "var(--primary)" }}
                             />
                           </ListItemIcon>
                           <ListItemText
@@ -349,13 +346,13 @@ export default function Sidebar(props: SidebarProps) {
                           />
                         </ListItemButton>
                         <Tooltip title="Więcej">
-                          <IconButton
+              <IconButton
                             size="small"
                             onClick={(e) => openTopicMenu(e, String(topic.id))}
                             sx={{
                               mr: 1,
-                              color: "#607d8b",
-                              "&:hover": { backgroundColor: "#eceff1" },
+                color: "var(--muted-foreground)",
+                "&:hover": { backgroundColor: "var(--muted)" },
                             }}
                           >
                             <MoreVertIcon fontSize="small" />
@@ -371,7 +368,7 @@ export default function Sidebar(props: SidebarProps) {
         </List>
       </CardContent>
       <Divider />
-      <Box sx={{ p: 2, backgroundColor: "white" }}>
+  <Box sx={{ p: 2, backgroundColor: "var(--sidebar)" }}>
         <TextField
           fullWidth
           size="small"

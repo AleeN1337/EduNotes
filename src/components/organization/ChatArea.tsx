@@ -247,20 +247,20 @@ export default function ChatArea(props: ChatAreaProps) {
       }}
     >
       <CardHeader
-        avatar={<ChatBubbleOutlineIcon sx={{ color: "#3498db" }} />}
+        avatar={<ChatBubbleOutlineIcon sx={{ color: "var(--primary)" }} />}
         title={
-          <Typography variant="h6" sx={{ fontWeight: 600, color: "#2c3e50" }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, color: "var(--foreground)" }}>
             {title}
           </Typography>
         }
         sx={{
           pb: 1,
-          backgroundColor: "white",
-          borderBottom: "1px solid #e0e0e0",
+          backgroundColor: "var(--card)",
+          borderBottom: "1px solid var(--border)",
         }}
       />
       <CardContent
-        sx={{ flex: 1, overflowY: "auto", pt: 1, backgroundColor: "#fafafa" }}
+        sx={{ flex: 1, overflowY: "auto", pt: 1, backgroundColor: "var(--card)" }}
       >
         {!canSend ? (
           <Box
@@ -440,11 +440,11 @@ export default function ChatArea(props: ChatAreaProps) {
                         display: "inline-flex",
                         alignItems: "center",
                         gap: 0.75,
-                        backgroundColor: "#eceff1",
+                        backgroundColor: "var(--muted)",
                         borderRadius: 999,
                         px: 1,
                         py: 0.25,
-                        color: "#546e7a",
+                        color: "var(--muted-foreground)",
                         fontSize: 12,
                       }}
                     >
@@ -457,7 +457,7 @@ export default function ChatArea(props: ChatAreaProps) {
                           }}
                         >
                           <ThumbUpIcon
-                            sx={{ fontSize: 14, color: "#1565c0" }}
+                            sx={{ fontSize: 14, color: "var(--primary)" }}
                           />
                           <Typography variant="caption" sx={{ lineHeight: 1 }}>
                             {getDisplayedLikes(msg)}
@@ -473,7 +473,7 @@ export default function ChatArea(props: ChatAreaProps) {
                           }}
                         >
                           <ThumbDownIcon
-                            sx={{ fontSize: 14, color: "#c62828" }}
+                            sx={{ fontSize: 14, color: "var(--destructive)" }}
                           />
                           <Typography variant="caption" sx={{ lineHeight: 1 }}>
                             {getDisplayedDislikes(msg)}
@@ -483,7 +483,7 @@ export default function ChatArea(props: ChatAreaProps) {
                     </Box>
                   )}
                   {/* No side action stacks; plus menu instead */}
-                  <IconButton
+          <IconButton
                     size="small"
                     className="message-plus"
                     aria-label="Akcje wiadomości"
@@ -495,8 +495,8 @@ export default function ChatArea(props: ChatAreaProps) {
                       opacity: 0,
                       visibility: "hidden",
                       transition: "opacity 0.15s ease",
-                      color: "#90a4ae",
-                      "&:hover": { backgroundColor: "#eceff1" },
+            color: "var(--muted-foreground)",
+            "&:hover": { backgroundColor: "var(--muted)" },
                     }}
                   >
                     <AddIcon fontSize="small" />
@@ -515,7 +515,7 @@ export default function ChatArea(props: ChatAreaProps) {
           >
             <Box
               sx={{
-                backgroundColor: "#eceff1",
+                backgroundColor: "var(--muted)",
                 borderRadius: 2,
                 px: 1.25,
                 py: 0.75,
@@ -530,7 +530,7 @@ export default function ChatArea(props: ChatAreaProps) {
                   width: 6,
                   height: 6,
                   borderRadius: 6,
-                  background: "#90a4ae",
+                  background: "var(--muted-foreground)",
                   display: "inline-block",
                   animation: "blink 1.2s infinite",
                 }}
@@ -540,7 +540,7 @@ export default function ChatArea(props: ChatAreaProps) {
                   width: 6,
                   height: 6,
                   borderRadius: 6,
-                  background: "#90a4ae",
+                  background: "var(--muted-foreground)",
                   display: "inline-block",
                   animation: "blink 1.2s 0.2s infinite",
                 }}
@@ -550,7 +550,7 @@ export default function ChatArea(props: ChatAreaProps) {
                   width: 6,
                   height: 6,
                   borderRadius: 6,
-                  background: "#90a4ae",
+                  background: "var(--muted-foreground)",
                   display: "inline-block",
                   animation: "blink 1.2s 0.4s infinite",
                 }}
@@ -616,13 +616,13 @@ export default function ChatArea(props: ChatAreaProps) {
             closeMenu();
           }}
         >
-          <ThumbUpIcon
+    <ThumbUpIcon
             fontSize="small"
             style={{
               marginRight: 8,
               color:
                 menuMsg && messageRatings[menuMsg.id]?.liked
-                  ? "#1565c0"
+      ? "var(--primary)"
                   : undefined,
             }}
           />
@@ -650,13 +650,13 @@ export default function ChatArea(props: ChatAreaProps) {
             closeMenu();
           }}
         >
-          <ThumbDownIcon
+    <ThumbDownIcon
             fontSize="small"
             style={{
               marginRight: 8,
               color:
                 menuMsg && messageRatings[menuMsg.id]?.disliked
-                  ? "#c62828"
+      ? "var(--destructive)"
                   : undefined,
             }}
           />
@@ -672,7 +672,7 @@ export default function ChatArea(props: ChatAreaProps) {
           >
             <DeleteIcon
               fontSize="small"
-              style={{ marginRight: 8, color: "#e53935" }}
+              style={{ marginRight: 8, color: "var(--destructive)" }}
             />
             Usuń
           </MenuItem>
@@ -680,19 +680,19 @@ export default function ChatArea(props: ChatAreaProps) {
       </Menu>
       <Divider />
       <CardActions
-        sx={{ p: 2, flexDirection: "column", gap: 1, backgroundColor: "white" }}
+        sx={{ p: 2, flexDirection: "column", gap: 1, backgroundColor: "var(--card)" }}
       >
         {selectedFile && (
           <Box
             sx={{
               width: "100%",
               p: 1,
-              backgroundColor: "#f0f8ff",
+              backgroundColor: "var(--muted)",
               borderRadius: 1,
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              border: "1px solid #e3f2fd",
+              border: "1px solid var(--border)",
             }}
           >
             <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -701,7 +701,7 @@ export default function ChatArea(props: ChatAreaProps) {
             <IconButton
               size="small"
               onClick={onRemoveFile}
-              sx={{ "&:hover": { backgroundColor: "#e74c3c", color: "white" } }}
+              sx={{ color: "var(--destructive)", "&:hover": { backgroundColor: "var(--muted)" } }}
             >
               <DeleteIcon fontSize="small" />
             </IconButton>
@@ -735,8 +735,8 @@ export default function ChatArea(props: ChatAreaProps) {
             <IconButton
               component="span"
               sx={{
-                color: "#7f8c8d",
-                "&:hover": { backgroundColor: "#ecf0f1", color: "#2c3e50" },
+                color: "var(--muted-foreground)",
+                "&:hover": { backgroundColor: "var(--muted)", color: "var(--foreground)" },
               }}
             >
               <AttachFileIcon />
@@ -752,8 +752,9 @@ export default function ChatArea(props: ChatAreaProps) {
               textTransform: "none",
               fontWeight: 500,
               minWidth: "80px",
-              backgroundColor: "#3498db",
-              "&:hover": { backgroundColor: "#2980b9" },
+              backgroundColor: "var(--primary)",
+              color: "var(--primary-foreground)",
+              "&:hover": { opacity: 0.95 },
             }}
           >
             Wyślij

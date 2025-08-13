@@ -55,11 +55,11 @@ export default function InvitationsPanel(props: InvitationsPanelProps) {
 
   return (
     <Box
-      sx={{ p: 2, backgroundColor: "white", borderTop: "1px solid #e0e0e0" }}
+      sx={{ p: 2, backgroundColor: "var(--sidebar)", borderTop: "1px solid var(--sidebar-border)" }}
     >
       <Typography
         variant="subtitle2"
-        sx={{ mb: 1, fontWeight: 600, color: "#2c3e50" }}
+        sx={{ mb: 1, fontWeight: 600, color: "var(--sidebar-foreground)" }}
       >
         Zaproszenia
       </Typography>
@@ -91,8 +91,8 @@ export default function InvitationsPanel(props: InvitationsPanelProps) {
               onClick={handleSend}
               disabled={!emailValid}
               sx={{
-                color: "#3498db",
-                "&:hover": { backgroundColor: "#3498db", color: "white" },
+                color: "var(--primary)",
+                "&:hover": { backgroundColor: "var(--muted)", color: "var(--foreground)" },
               }}
             >
               <PersonAddIcon fontSize="small" />
