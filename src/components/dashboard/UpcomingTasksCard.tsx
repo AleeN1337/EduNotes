@@ -11,12 +11,13 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useEffect, useState } from "react";
+import api from "@/lib/api";
 
 interface TaskItem {
   id: string;
   title: string;
   dueDate: string;
-  storageKey: string;
+  organizationId?: string;
 }
 
 interface UpcomingTasksCardProps {
@@ -28,42 +29,65 @@ export default function UpcomingTasksCard({ orgIds }: UpcomingTasksCardProps) {
   const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined" || orgIds.length === 0) return;
-    const loaded: TaskItem[] = [];
-    orgIds.forEach((orgId) => {
-      const key = `tasks_${orgId}`;
+    if (orgIds.length === 0) return;
+    let active = true;
+    (async () => {
+      const mapAndSort = (arr: any[]): TaskItem[] => {
+        const filtered = arr
+          .filter((d) =>
+            orgIds.includes(String(d.organization_id ?? d.organizationId))
+          )
+          .map((d) => ({
+            id: String(d.deadline_id ?? d.id),
+            title: d.event_name,
+            dueDate: d.event_date,
+            organizationId: String(d.organization_id ?? ""),
+          })) as TaskItem[];
+        filtered.sort(
+          (a, b) =>
+            new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+        );
+        return filtered;
+      };
+
       try {
-        const arr = JSON.parse(localStorage.getItem(key) || "[]");
-        arr.forEach((t: any) => {
-          if (t.id && t.title && t.due_date) {
-            loaded.push({
-              id: t.id,
-              title: t.title,
-              dueDate: t.due_date,
-              storageKey: key,
-            });
-          }
-        });
-      } catch {}
-    });
-    // Sort by due datetime ascending
-    loaded.sort(
-      (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
-    );
-    setTasks(loaded);
+        // Preferred: only my deadlines
+        const res = await api.get(`/deadlines/my_deadlines`);
+        const raw = Array.isArray(res.data) ? res.data : res.data?.data ?? [];
+        if (active) setTasks(mapAndSort(raw as any[]));
+        return;
+      } catch (err: any) {
+        if (err?.response?.status !== 404) {
+          console.warn("/deadlines/my_deadlines failed, trying /deadlines/", err);
+        }
+      }
+
+      try {
+        // Fallback: all deadlines (filter client-side)
+        const res2 = await api.get(`/deadlines/`);
+        const raw2 = Array.isArray(res2.data)
+          ? res2.data
+          : res2.data?.data ?? [];
+        if (active) setTasks(mapAndSort(raw2 as any[]));
+      } catch (err2) {
+        if (active) setTasks([]);
+        console.error("Failed to load deadlines via fallback:", err2);
+      }
+    })();
+    return () => {
+      active = false;
+    };
   }, [orgIds]);
 
   const displayTasks = showAll ? tasks : tasks.slice(0, 3);
 
-  const handleDelete = (taskToDelete: TaskItem) => {
+  const handleDelete = async (taskToDelete: TaskItem) => {
     try {
-      const arr = JSON.parse(
-        localStorage.getItem(taskToDelete.storageKey) || "[]"
-      );
-      const updatedArr = arr.filter((t: any) => t.id !== taskToDelete.id);
-      localStorage.setItem(taskToDelete.storageKey, JSON.stringify(updatedArr));
+      await api.delete(`/deadlines/${taskToDelete.id}`);
       setTasks((prev) => prev.filter((t) => t.id !== taskToDelete.id));
-    } catch {}
+    } catch (err) {
+      console.error("Failed to delete deadline:", err);
+    }
   };
 
   return (

@@ -51,6 +51,8 @@ export interface ChatAreaProps {
   ratingsKey: string; // kept, not used
   // Currently selected topic id (required for backend AI summary endpoint)
   topicId: string | null;
+  // Organization id for persisting AI summary as a note
+  orgId: string;
 }
 
 export default function ChatArea(props: ChatAreaProps) {
@@ -72,6 +74,7 @@ export default function ChatArea(props: ChatAreaProps) {
     setMessageRatings,
     ratingsKey,
     topicId,
+  orgId,
   } = props;
 
   // Robustly resolve current user id (fallback to localStorage if prop is missing)

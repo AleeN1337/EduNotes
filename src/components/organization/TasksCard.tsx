@@ -15,6 +15,7 @@ import {
   DialogActions,
   TextField,
   Box,
+  Button,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -55,6 +56,10 @@ export default function TasksCard(props: TasksCardProps) {
     error,
   } = props;
 
+  const [showAll, setShowAll] = React.useState(false);
+
+  const displayTasks = showAll ? tasks : tasks.slice(0, 3);
+
   return (
     <Card sx={{ mb: 2, mx: 2 }}>
       <CardHeader
@@ -77,8 +82,8 @@ export default function TasksCard(props: TasksCardProps) {
         }
       />
 
-      <List sx={{ maxHeight: 200, overflow: "auto" }}>
-        {tasks.length === 0 ? (
+      <List>
+        {displayTasks.length === 0 ? (
           <ListItem>
             <ListItemText
               primary={
@@ -87,7 +92,7 @@ export default function TasksCard(props: TasksCardProps) {
             />
           </ListItem>
         ) : (
-          tasks.map((task) => {
+          displayTasks.map((task) => {
             const due = new Date(task.due_date);
             const now = new Date();
             const msDiff = due.getTime() - now.getTime();
@@ -130,6 +135,13 @@ export default function TasksCard(props: TasksCardProps) {
           })
         )}
       </List>
+      {tasks.length > 3 && (
+        <Box sx={{ px: 2, pb: 2 }}>
+          <Button size="small" onClick={() => setShowAll((s) => !s)}>
+            {showAll ? "Pokaż mniej" : "Pokaż wszystkie zadania"}
+          </Button>
+        </Box>
+      )}
 
       {/* Dialog dodawania zadania */}
       <Dialog open={adding} onClose={onCloseAdd} maxWidth="xs" fullWidth>

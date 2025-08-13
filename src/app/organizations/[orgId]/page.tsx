@@ -69,16 +69,8 @@ export default function OrganizationPage() {
   const [pendingInvites, setPendingInvites] = useState<Invite[]>([]);
   const [userColors, setUserColors] = useState<Record<string, string>>({});
 
-  // Tasks state stored in localStorage per organization
-  const storageKey = `tasks_${orgId}`;
-  const [tasks, setTasks] = useState<Task[]>(() => {
-    try {
-      const stored = localStorage.getItem(storageKey);
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
+  // Tasks (deadlines) stored in backend
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [addingTask, setAddingTask] = useState(false);
   const [taskError, setTaskError] = useState<string>("");
   const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -108,15 +100,15 @@ export default function OrganizationPage() {
     return `${first}${second}`;
   };
 
-  // Delete task handler
-  const handleDeleteTask = (taskId: string) => {
+  // Delete task handler (DELETE /deadlines/{id})
+  const handleDeleteTask = async (taskId: string) => {
     if (!window.confirm("Czy na pewno chcesz usunąć to zadanie?")) return;
-    const updated = tasks.filter((t: Task) => t.id !== taskId);
-    setTasks(updated);
     try {
-      localStorage.setItem(storageKey, JSON.stringify(updated));
+      await api.delete(`/deadlines/${taskId}`);
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
     } catch (err) {
-      console.error("Error saving tasks to localStorage:", err);
+      console.error("Error deleting deadline:", err);
+      alert("Nie udało się usunąć zadania");
     }
   };
 
@@ -811,40 +803,144 @@ export default function OrganizationPage() {
     }
   }, [messages]);
 
-  // No need to fetch tasks, load from localStorage on org change
+  // Load deadlines for this organization (try my_deadlines, fallback to all)
   useEffect(() => {
+    let active = true;
+    (async () => {
+      const mapSortFilter = (arr: any[]): Task[] => {
+        const mapped: Task[] = (arr as any[])
+          .filter((d) => String(d.organization_id) === String(orgId))
+          .map((d) => ({
+            id: String(d.deadline_id ?? d.id),
+            title: d.event_name,
+            due_date: d.event_date,
+          }));
+        mapped.sort(
+          (a, b) =>
+            new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+        );
+        return mapped;
+      };
+
+      // First try: my deadlines
+      try {
+        const res = await api.get(`/deadlines/my_deadlines`);
+        const raw = Array.isArray(res.data) ? res.data : unwrap<any[]>(res);
+        if (active) setTasks(mapSortFilter(raw as any[]));
+        return;
+      } catch (err: any) {
+        if (err?.response?.status !== 404) {
+          console.warn("/deadlines/my_deadlines failed, trying /deadlines/", err);
+        }
+      }
+
+      // Fallback: all deadlines
+      try {
+        const res2 = await api.get(`/deadlines/`);
+        const raw2 = Array.isArray(res2.data)
+          ? res2.data
+          : unwrap<any[]>(res2);
+        if (active) setTasks(mapSortFilter(raw2 as any[]));
+      } catch (err2) {
+        if (active) setTasks([]);
+        console.error("Error loading deadlines (fallback):", err2);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [orgId]);
+
+  // One-time migration of any old localStorage tasks into backend deadlines
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const storageKey = `tasks_${orgId}`;
+    const migratedKey = `tasks_migrated_${orgId}`;
     try {
-      const stored = localStorage.getItem(storageKey);
-      setTasks(stored ? JSON.parse(stored) : []);
-    } catch (err) {
-      console.error("Error loading tasks from localStorage:", err);
+      const already = localStorage.getItem(migratedKey);
+      if (already) return;
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) return;
+      const arr: any[] = JSON.parse(raw);
+      if (!Array.isArray(arr) || arr.length === 0) {
+        localStorage.setItem(migratedKey, "1");
+        return;
+      }
+      (async () => {
+        for (const t of arr) {
+          try {
+            const body = new URLSearchParams({
+              event_type: "Zadanie",
+              event_name: String(t.title ?? "Zadanie"),
+              event_description: "",
+              event_date: new Date(String(t.due_date)).toISOString(),
+              organization_id: String(orgId),
+            }).toString();
+            await api.post(`/deadlines/`, body, {
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            });
+          } catch (e) {
+            console.warn("Migration of a local task failed:", e);
+          }
+        }
+        localStorage.setItem(migratedKey, "1");
+        // Refresh deadlines after migration
+        try {
+          const res = await api.get(`/deadlines/my_deadlines`);
+          const raw = Array.isArray(res.data) ? res.data : unwrap<any[]>(res);
+          const mapped = (raw as any[])
+            .filter((d) => String(d.organization_id) === String(orgId))
+            .map((d) => ({
+              id: String(d.deadline_id ?? d.id),
+              title: d.event_name,
+              due_date: d.event_date,
+            })) as Task[];
+          mapped.sort(
+            (a, b) =>
+              new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+          );
+          setTasks(mapped);
+        } catch {}
+      })();
+    } catch (e) {
+      console.warn("Local tasks migration skipped due to error:", e);
     }
   }, [orgId]);
 
-  // Add new task handler storing locally
-  const handleAddTask = () => {
+  // Add new task handler using POST /deadlines/ (form-encoded per API)
+  const handleAddTask = async () => {
     if (!newTaskTitle.trim() || !newTaskDate || !newTaskTime) {
       setTaskError("Wszystkie pola są wymagane.");
       return;
     }
     setTaskError("");
     const dueDateTime = `${newTaskDate}T${newTaskTime}`;
-    const newTask: Task = {
-      id: Date.now().toString(),
-      title: newTaskTitle.trim(),
-      due_date: dueDateTime,
-    };
-    const updated = [...tasks, newTask];
-    setTasks(updated);
     try {
-      localStorage.setItem(storageKey, JSON.stringify(updated));
+      const body = new URLSearchParams({
+        event_type: "Zadanie",
+        event_name: newTaskTitle.trim(),
+        event_description: "",
+        event_date: new Date(dueDateTime).toISOString(),
+        organization_id: String(orgId),
+      }).toString();
+      const res = await api.post(`/deadlines/`, body, {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      });
+      const d = res.data?.data ?? res.data;
+      const created: Task = {
+        id: String(d.deadline_id ?? d.id),
+        title: d.event_name,
+        due_date: d.event_date,
+      };
+      setTasks((prev) => [...prev, created]);
+      setNewTaskTitle("");
+      setNewTaskDate("");
+      setNewTaskTime("");
+      setAddingTask(false);
     } catch (err) {
-      console.error("Error saving tasks to localStorage:", err);
+      console.error("Error creating deadline:", err);
+      setTaskError("Nie udało się dodać zadania");
     }
-    setNewTaskTitle("");
-    setNewTaskDate("");
-    setNewTaskTime("");
-    setAddingTask(false);
   };
 
   return (

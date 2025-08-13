@@ -147,9 +147,19 @@ export default function QuickStatsCards() {
         <Card sx={{ boxShadow: "0 4px 20px rgba(0,0,0,0.1)", borderRadius: 2 }}>
           <CardContent sx={{ textAlign: "center", py: 3 }}>
             <Typography
-              variant="h3"
               color="success.main"
-              sx={{ fontWeight: 700 }}
+              sx={{
+                fontWeight: 700,
+                // Responsive font size so long words don’t break layout
+                fontSize: { xs: "1.5rem", sm: "2rem", md: "2.25rem" },
+                lineHeight: 1.2,
+                // Allow breaking long single words like "niekompetentny"
+                wordBreak: "break-word",
+                overflowWrap: "anywhere",
+                whiteSpace: "normal",
+                display: "inline-block",
+                maxWidth: "100%",
+              }}
             >
               {rank !== null ? rank : "--"}
             </Typography>

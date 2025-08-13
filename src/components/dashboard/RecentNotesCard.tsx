@@ -1,6 +1,16 @@
 "use client";
 
-import { Box, Card, CardContent, Typography, Button } from "@mui/material";
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+} from "@mui/material";
 import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 import ThumbDownIcon from "@mui/icons-material/ThumbDown";
 
@@ -10,6 +20,7 @@ import { Note } from "@/types";
 
 export default function RecentNotesCard() {
   const [notes, setNotes] = useState<Note[]>([]);
+  const [selected, setSelected] = useState<Note | null>(null);
   // local ratings no longer drive counters here; dashboard shows backend counts only
 
   useEffect(() => {
@@ -105,13 +116,37 @@ export default function RecentNotesCard() {
                 borderColor: "divider",
                 borderRadius: 2,
                 "&:hover": { backgroundColor: "action.hover" },
+                cursor: "pointer",
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
               }}
+              onClick={() => setSelected(note)}
             >
               <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                 {note.title}
               </Typography>
-              <Typography variant="body2" color="text.secondary" noWrap>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{
+                  display: "-webkit-box",
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "normal",
+                  mt: 0.5,
+                }}
+              >
                 {note.content}
+              </Typography>
+              <Typography
+                variant="caption"
+                color="primary"
+                sx={{ mt: 0.5, textDecoration: "underline" }}
+              >
+                Kliknij, aby zobaczyć więcej
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 {new Date(note.created_at).toLocaleString()}
@@ -143,6 +178,34 @@ export default function RecentNotesCard() {
           ))}
         </Box>
       </CardContent>
+      {/* Details dialog */}
+      <Dialog
+        open={!!selected}
+        onClose={() => setSelected(null)}
+        fullWidth
+        maxWidth="sm"
+      >
+        {selected && (
+          <>
+            <DialogTitle>{selected.title}</DialogTitle>
+            <DialogContent dividers>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: "block", mb: 1 }}
+              >
+                {new Date(selected.created_at).toLocaleString()}
+              </Typography>
+              <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+                {selected.content}
+              </Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setSelected(null)}>Zamknij</Button>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
     </Card>
   );
 }
