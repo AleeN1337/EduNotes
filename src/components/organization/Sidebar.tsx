@@ -14,16 +14,22 @@ import {
   Typography,
   Box,
   TextField,
+  InputAdornment,
+  Menu,
+  MenuItem,
+  Chip,
+  Tooltip,
 } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
 import BookIcon from "@mui/icons-material/Book";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AddIcon from "@mui/icons-material/Add";
-import DeleteIcon from "@mui/icons-material/Delete";
 import TopicIcon from "@mui/icons-material/Topic";
-import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import CloseIcon from "@mui/icons-material/Close";
 import InvitationsPanel from "./InvitationsPanel";
-import { Channel, Topic } from "./types";
+import { Channel, Topic, Invite } from "./types";
 
 export interface SidebarProps {
   channels: Channel[];
@@ -48,6 +54,7 @@ export interface SidebarProps {
   onChangeInviteEmail: (v: string) => void;
   onSendInvite: () => void;
   pendingInvitesCount: number;
+  invites?: Invite[];
 }
 
 export default function Sidebar(props: SidebarProps) {
@@ -74,7 +81,63 @@ export default function Sidebar(props: SidebarProps) {
     onChangeInviteEmail,
     onSendInvite,
     pendingInvitesCount,
+    invites,
   } = props;
+
+  // Search state
+  const [search, setSearch] = React.useState("");
+
+  // Context menu state
+  const [channelMenuAnchor, setChannelMenuAnchor] =
+    React.useState<null | HTMLElement>(null);
+  const [channelMenuId, setChannelMenuId] = React.useState<string | null>(null);
+  const [topicMenuAnchor, setTopicMenuAnchor] =
+    React.useState<null | HTMLElement>(null);
+  const [topicMenuId, setTopicMenuId] = React.useState<string | null>(null);
+
+  const openChannelMenu = (e: React.MouseEvent<HTMLElement>, id: string) => {
+    e.stopPropagation();
+    setChannelMenuAnchor(e.currentTarget);
+    setChannelMenuId(id);
+  };
+  const closeChannelMenu = () => {
+    setChannelMenuAnchor(null);
+    setChannelMenuId(null);
+  };
+  const openTopicMenu = (e: React.MouseEvent<HTMLElement>, id: string) => {
+    e.stopPropagation();
+    setTopicMenuAnchor(e.currentTarget);
+    setTopicMenuId(id);
+  };
+  const closeTopicMenu = () => {
+    setTopicMenuAnchor(null);
+    setTopicMenuId(null);
+  };
+
+  // Derived: filtered channels/topics
+  const filtered = React.useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q)
+      return channels.map((ch) => ({
+        channel: ch,
+        topics: channelTopics[String(ch.id)] || [],
+      }));
+    return channels
+      .map((ch) => {
+        const cid = String(ch.id);
+        const topics = channelTopics[cid] || [];
+        const chMatch = ch.channel_name.toLowerCase().includes(q);
+        const matchedTopics = topics.filter((t) =>
+          t.topic_name.toLowerCase().includes(q)
+        );
+        return chMatch
+          ? { channel: ch, topics }
+          : matchedTopics.length > 0
+          ? { channel: ch, topics: matchedTopics }
+          : null;
+      })
+      .filter(Boolean) as { channel: Channel; topics: Topic[] }[];
+  }, [search, channels, channelTopics]);
 
   return (
     <Card
@@ -84,6 +147,7 @@ export default function Sidebar(props: SidebarProps) {
         boxShadow: "none",
         display: "flex",
         flexDirection: "column",
+        position: "relative",
       }}
     >
       <CardHeader
@@ -100,11 +164,43 @@ export default function Sidebar(props: SidebarProps) {
         }}
       />
       <CardContent sx={{ pt: 1, flex: 1, overflow: "auto" }}>
+        {/* Search */}
+        <TextField
+          fullWidth
+          size="small"
+          placeholder="Szukaj przedmiotów/tematów"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ mb: 1.5 }}
+        />
+
+        {filtered.length === 0 ? (
+          <Box
+            sx={{
+              textAlign: "center",
+              color: "text.secondary",
+              py: 4,
+            }}
+          >
+            <Typography variant="body2">
+              {search.trim()
+                ? "Brak wyników"
+                : "Brak przedmiotów. Użyj pola \"Nowy przedmiot\" aby dodać."}
+            </Typography>
+          </Box>
+        ) : null}
+
         <List sx={{ py: 0 }}>
-          {channels.map((ch) => {
+          {filtered.map(({ channel: ch, topics: channelTopicsData }) => {
             const cid = String(ch.id);
             const isExpanded = expanded[cid] || false;
-            const channelTopicsData = channelTopics[cid] || [];
 
             return (
               <Box key={cid} sx={{ mb: 1 }}>
@@ -125,51 +221,46 @@ export default function Sidebar(props: SidebarProps) {
                   <ListItemText
                     primary={
                       <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0.75,
+                        }}
                       >
                         <Typography
                           variant="subtitle1"
-                          sx={{ fontWeight: 600 }}
+                          sx={{
+                            fontWeight: 600,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
                         >
                           {ch.channel_name}
                         </Typography>
+                        {selectedChannel === cid ? (
+                          <Chip
+                            size="small"
+                            label="Aktywny"
+                            color="info"
+                            variant="outlined"
+                          />
+                        ) : null}
                       </Box>
                     }
                   />
-                  <IconButton
-                    edge="end"
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSetAddingTopicToChannel(cid);
-                    }}
-                    sx={{
-                      mr: 1,
-                      color: "#27ae60",
-                      "&:hover": { backgroundColor: "#27ae60", color: "white" },
-                    }}
-                  >
-                    <AddIcon fontSize="small" />
-                  </IconButton>
-                  <IconButton
-                    edge="end"
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeleteChannel(cid);
-                    }}
-                    disabled={deletingChannel === cid}
-                    sx={{
-                      color: "#e74c3c",
-                      "&:hover": { backgroundColor: "#e74c3c", color: "white" },
-                    }}
-                  >
-                    {deletingChannel === cid ? (
-                      <HourglassEmptyIcon fontSize="small" />
-                    ) : (
-                      <DeleteIcon fontSize="small" />
-                    )}
-                  </IconButton>
+                  <Tooltip title="Więcej">
+                    <IconButton
+                      edge="end"
+                      size="small"
+                      onClick={(e) => openChannelMenu(e, cid)}
+                      sx={{
+                        color: "#607d8b",
+                        "&:hover": { backgroundColor: "#eceff1" },
+                      }}
+                    >
+                      <MoreVertIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
                 </ListItemButton>
 
                 <Collapse in={isExpanded} timeout="auto" unmountOnExit>
@@ -211,7 +302,7 @@ export default function Sidebar(props: SidebarProps) {
                             color="secondary"
                             onClick={() => onSetAddingTopicToChannel(null)}
                           >
-                            <DeleteIcon />
+                            <CloseIcon />
                           </IconButton>
                         </Box>
                       </Box>
@@ -253,26 +344,23 @@ export default function Sidebar(props: SidebarProps) {
                               fontWeight:
                                 selectedTopic === topic.id ? 600 : 400,
                               fontSize: "0.9rem",
+                              noWrap: true,
                             }}
                           />
                         </ListItemButton>
-                        <IconButton
-                          size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteTopic(topic.id);
-                          }}
-                          sx={{
-                            mr: 1,
-                            color: "#e74c3c",
-                            "&:hover": {
-                              backgroundColor: "#e74c3c",
-                              color: "white",
-                            },
-                          }}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
+                        <Tooltip title="Więcej">
+                          <IconButton
+                            size="small"
+                            onClick={(e) => openTopicMenu(e, String(topic.id))}
+                            sx={{
+                              mr: 1,
+                              color: "#607d8b",
+                              "&:hover": { backgroundColor: "#eceff1" },
+                            }}
+                          >
+                            <MoreVertIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                       </Box>
                     ))}
                   </List>
@@ -299,7 +387,49 @@ export default function Sidebar(props: SidebarProps) {
         onChangeEmail={onChangeInviteEmail}
         onSendInvite={onSendInvite}
         pendingCount={pendingInvitesCount}
+        invites={invites}
       />
+
+      {/* Channel context menu */}
+      <Menu
+        anchorEl={channelMenuAnchor}
+        open={Boolean(channelMenuAnchor)}
+        onClose={closeChannelMenu}
+      >
+        <MenuItem
+          onClick={() => {
+            if (channelMenuId) onSetAddingTopicToChannel(channelMenuId);
+            closeChannelMenu();
+          }}
+        >
+          Dodaj temat
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (channelMenuId) onDeleteChannel(channelMenuId);
+            closeChannelMenu();
+          }}
+          disabled={deletingChannel === channelMenuId}
+        >
+          Usuń przedmiot
+        </MenuItem>
+      </Menu>
+
+      {/* Topic context menu */}
+      <Menu
+        anchorEl={topicMenuAnchor}
+        open={Boolean(topicMenuAnchor)}
+        onClose={closeTopicMenu}
+      >
+        <MenuItem
+          onClick={() => {
+            if (topicMenuId) onDeleteTopic(topicMenuId);
+            closeTopicMenu();
+          }}
+        >
+          Usuń temat
+        </MenuItem>
+      </Menu>
     </Card>
   );
 }

@@ -14,6 +14,9 @@ import {
   Avatar,
   Menu,
   MenuItem,
+  Dialog,
+  DialogContent,
+  Chip,
 } from "@mui/material";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
@@ -144,19 +147,25 @@ export default function ChatArea(props: ChatAreaProps) {
   };
 
   // Track image render failures to fallback to a link
-  const [failedImages, setFailedImages] = React.useState<Record<string, boolean>>({});
+  const [failedImages, setFailedImages] = React.useState<
+    Record<string, boolean>
+  >({});
   const markImageFailed = (id: string) =>
     setFailedImages((prev) => ({ ...prev, [id]: true }));
 
   // Blob URL cache for protected images
-  const [imageBlobUrls, setImageBlobUrls] = React.useState<Record<string, string>>({});
+  const [imageBlobUrls, setImageBlobUrls] = React.useState<
+    Record<string, string>
+  >({});
   React.useEffect(() => {
     let cancelled = false;
-    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
     const candidates = messages.filter(
       (m) =>
         m.image_url &&
-        (isImageLink(m.image_url) || (m.content_type || "").toLowerCase().startsWith("image")) &&
+        (isImageLink(m.image_url) ||
+          (m.content_type || "").toLowerCase().startsWith("image")) &&
         !imageBlobUrls[m.id]
     );
     candidates.forEach(async (m) => {
@@ -184,6 +193,48 @@ export default function ChatArea(props: ChatAreaProps) {
       Object.values(imageBlobUrls).forEach((u) => URL.revokeObjectURL(u));
     };
   }, [imageBlobUrls]);
+
+  // Locally order messages so newest appear at the bottom
+  const orderedMessages = React.useMemo(() => {
+    const arr = [...messages];
+    arr.sort(
+      (a, b) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    return arr;
+  }, [messages]);
+
+  // Lightbox state for images
+  const [lightboxUrl, setLightboxUrl] = React.useState<string | null>(null);
+  const openLightbox = (url: string) => setLightboxUrl(url);
+  const closeLightbox = () => setLightboxUrl(null);
+
+  // Auto-scroll to bottom on messages or typing changes
+  const bottomRef = React.useRef<HTMLDivElement | null>(null);
+  React.useEffect(() => {
+    const t = setTimeout(
+      () => bottomRef.current?.scrollIntoView({ behavior: "smooth" }),
+      0
+    );
+    return () => clearTimeout(t);
+  }, [orderedMessages.length, newMessage]);
+
+  // Helpers
+  const formatDayLabel = (iso: string) => {
+    const d = new Date(iso);
+    const today = new Date();
+    const isSameDay = (a: Date, b: Date) =>
+      a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+    if (isSameDay(d, today)) return "Dziś";
+    if (isSameDay(d, yesterday)) return "Wczoraj";
+    return d.toLocaleDateString();
+  };
+
+  // (removed duplicate bottomRef/effect)
 
   return (
     <Card
@@ -240,176 +291,301 @@ export default function ChatArea(props: ChatAreaProps) {
             </Typography>
           </Box>
         ) : (
-          messages.map((msg) => {
+          // Render with date separators
+          orderedMessages.map((msg, idx) => {
+            const prev = orderedMessages[idx - 1];
+            const showDateSeparator =
+              !prev ||
+              new Date(prev.created_at).toDateString() !==
+                new Date(msg.created_at).toDateString();
             const isOwn = myId !== null && String(msg.user_id) === myId;
             return (
-              <Box
-                key={msg.id}
-                sx={{
-                  width: "100%",
-                  display: "flex",
-                  justifyContent: isOwn ? "flex-end" : "flex-start",
-                  alignItems: "flex-start",
-                  mb: 2,
-                  gap: 1,
-                  "&:hover .message-plus": {
-                    opacity: 1,
-                    visibility: "visible",
-                  },
-                }}
-              >
-                {/* Avatar moved inside bubble (bottom-left). No external avatar here. */}
-                {/* Actions hidden under plus menu */}
+              <React.Fragment key={msg.id}>
+                {showDateSeparator && (
+                  <Box sx={{ width: "100%", my: 1 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Divider sx={{ flex: 1 }} />
+                      <Chip
+                        size="small"
+                        label={formatDayLabel(msg.created_at)}
+                      />
+                      <Divider sx={{ flex: 1 }} />
+                    </Box>
+                  </Box>
+                )}
                 <Box
                   sx={{
-                    p: 2,
-                    pl: 6, // make room for avatar inside bubble (left)
-                    pb: 5, // make room for avatar inside bubble (bottom)
-                    position: "relative",
-                    maxWidth: "70%",
-                    width: "auto",
-                    backgroundColor: getColorForUser(String(msg.user_id)),
-                    color: "#2c3e50",
-                    borderRadius: isOwn
-                      ? "18px 18px 4px 18px"
-                      : "18px 18px 18px 4px",
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-                    // reveal timestamp only when hovering the bubble
-                    "&:hover .message-timestamp": {
+                    width: "100%",
+                    display: "flex",
+                    justifyContent: isOwn ? "flex-end" : "flex-start",
+                    alignItems: "flex-start",
+                    mb: 2,
+                    gap: 1,
+                    "&:hover .message-plus": {
                       opacity: 1,
-                      transform: "translateY(0px)",
+                      visibility: "visible",
                     },
                   }}
                 >
-                  {/* In-bubble avatar at bottom-left */}
-                  <Avatar
-                    sx={{
-                      width: 28,
-                      height: 28,
-                      position: "absolute",
-                      left: 8,
-                      bottom: 8,
-                      backgroundColor:
-                        userColors[msg.user_id] ??
-                        getColorForUser(String(msg.user_id)),
-                      fontSize: "0.7rem",
-                      fontWeight: 700,
-                      border: "2px solid rgba(0,0,0,0.06)",
-                    }}
-                  >
-                    {getUserInitials(msg.user_id)}
-                  </Avatar>
-                  {/* Image/file attachment preview */}
-                  {msg.image_url && (
-        !failedImages[msg.id] ? (
-                      <Box sx={{ mt: 0.5, mb: 1 }}>
-                        <a href={msg.image_url} target="_blank" rel="noreferrer">
-                          <img
-          src={imageBlobUrls[msg.id] || msg.image_url}
-                            alt="Załącznik"
-                            onError={() => markImageFailed(msg.id)}
-                            style={{ maxWidth: "100%", borderRadius: 8, display: "block" }}
-                          />
-                        </a>
-                      </Box>
-                    ) : (
-                      <Box sx={{ mt: 0.5, mb: 1 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                          <a
-                            href={msg.image_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{ color: "inherit", textDecoration: "underline" }}
-                          >
-                            Pobierz załącznik
-                          </a>
-                        </Typography>
-                      </Box>
-                    )
-                  )}
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {msg.content}
-                  </Typography>
-                  {/* Hidden timestamp under the bubble, shows on hover */}
-                  <Typography
-                    className="message-timestamp"
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{
-                      position: "absolute",
-                      bottom: -16,
-                      left: isOwn ? "auto" : 8,
-                      right: isOwn ? 8 : "auto",
-                      opacity: 0,
-                      transform: "translateY(4px)",
-                      transition: "opacity 0.15s ease, transform 0.15s ease",
-                      pointerEvents: "none",
-                    }}
-                  >
-                    {new Date(msg.created_at).toLocaleTimeString()}
-                  </Typography>
-                </Box>
-                {/* Always-visible like/dislike counters next to the bubble */}
-                {(getDisplayedLikes(msg) > 0 || getDisplayedDislikes(msg) > 0) && (
+                  {/* Avatar moved inside bubble (bottom-left). No external avatar here. */}
+                  {/* Actions hidden under plus menu */}
                   <Box
                     sx={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 0.75,
-                      backgroundColor: "#eceff1",
-                      borderRadius: 999,
-                      px: 1,
-                      py: 0.25,
-                      color: "#546e7a",
-                      fontSize: 12,
+                      p: 2,
+                      pl: 6, // make room for avatar inside bubble (left)
+                      pb: 5, // make room for avatar inside bubble (bottom)
+                      position: "relative",
+                      maxWidth: "70%",
+                      width: "auto",
+                      backgroundColor: getColorForUser(String(msg.user_id)),
+                      color: "#2c3e50",
+                      borderRadius: isOwn
+                        ? "18px 18px 4px 18px"
+                        : "18px 18px 18px 4px",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                      // reveal timestamp only when hovering the bubble
+                      "&:hover .message-timestamp": {
+                        opacity: 1,
+                        transform: "translateY(0px)",
+                      },
                     }}
                   >
-                    {getDisplayedLikes(msg) > 0 && (
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                        <ThumbUpIcon sx={{ fontSize: 14, color: "#1565c0" }} />
-                        <Typography variant="caption" sx={{ lineHeight: 1 }}>
-                          {getDisplayedLikes(msg)}
-                        </Typography>
-                      </Box>
-                    )}
-                    {getDisplayedDislikes(msg) > 0 && (
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                        <ThumbDownIcon sx={{ fontSize: 14, color: "#c62828" }} />
-                        <Typography variant="caption" sx={{ lineHeight: 1 }}>
-                          {getDisplayedDislikes(msg)}
-                        </Typography>
-                      </Box>
-                    )}
+                    {/* In-bubble avatar at bottom-left */}
+                    <Avatar
+                      sx={{
+                        width: 28,
+                        height: 28,
+                        position: "absolute",
+                        left: 8,
+                        bottom: 8,
+                        backgroundColor:
+                          userColors[msg.user_id] ??
+                          getColorForUser(String(msg.user_id)),
+                        fontSize: "0.7rem",
+                        fontWeight: 700,
+                        border: "2px solid rgba(0,0,0,0.06)",
+                      }}
+                    >
+                      {getUserInitials(msg.user_id)}
+                    </Avatar>
+                    {/* Image/file attachment preview */}
+                    {msg.image_url &&
+                      (!failedImages[msg.id] ? (
+                        <Box sx={{ mt: 0.5, mb: 1 }}>
+                          <img
+                            src={imageBlobUrls[msg.id] || msg.image_url}
+                            alt="Załącznik"
+                            onError={() => markImageFailed(msg.id)}
+                            onClick={() =>
+                              openLightbox(
+                                imageBlobUrls[msg.id] || msg.image_url!
+                              )
+                            }
+                            style={{
+                              maxWidth: "100%",
+                              borderRadius: 8,
+                              display: "block",
+                              cursor: "zoom-in",
+                            }}
+                          />
+                        </Box>
+                      ) : (
+                        <Box sx={{ mt: 0.5, mb: 1 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            <a
+                              href={msg.image_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{
+                                color: "inherit",
+                                textDecoration: "underline",
+                              }}
+                            >
+                              Pobierz załącznik
+                            </a>
+                          </Typography>
+                        </Box>
+                      ))}
+                    {msg.content?.trim() ? (
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {msg.content}
+                      </Typography>
+                    ) : null}
+                    {/* Hidden timestamp under the bubble, shows on hover */}
+                    <Typography
+                      className="message-timestamp"
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{
+                        position: "absolute",
+                        bottom: -16,
+                        left: isOwn ? "auto" : 8,
+                        right: isOwn ? 8 : "auto",
+                        opacity: 0,
+                        transform: "translateY(4px)",
+                        transition: "opacity 0.15s ease, transform 0.15s ease",
+                        pointerEvents: "none",
+                      }}
+                    >
+                      {new Date(msg.created_at).toLocaleTimeString()}
+                    </Typography>
                   </Box>
-                )}
-                {/* No side action stacks; plus menu instead */}
-                <IconButton
-                  size="small"
-                  className="message-plus"
-                  aria-label="Akcje wiadomości"
-                  onClick={(e) => {
-                    setMenuAnchor(e.currentTarget);
-                    setMenuMsg(msg);
-                  }}
-                  sx={{
-                    opacity: 0,
-                    visibility: "hidden",
-                    transition: "opacity 0.15s ease",
-                    color: "#90a4ae",
-                    "&:hover": { backgroundColor: "#eceff1" },
-                  }}
-                >
-                  <AddIcon fontSize="small" />
-                </IconButton>
-                {/* Right-side avatar for own messages */}
-                {/* No external avatar for own messages; avatar is inside bubble. */}
-              </Box>
+                  {/* Always-visible like/dislike counters next to the bubble */}
+                  {(getDisplayedLikes(msg) > 0 ||
+                    getDisplayedDislikes(msg) > 0) && (
+                    <Box
+                      sx={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 0.75,
+                        backgroundColor: "#eceff1",
+                        borderRadius: 999,
+                        px: 1,
+                        py: 0.25,
+                        color: "#546e7a",
+                        fontSize: 12,
+                      }}
+                    >
+                      {getDisplayedLikes(msg) > 0 && (
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.5,
+                          }}
+                        >
+                          <ThumbUpIcon
+                            sx={{ fontSize: 14, color: "#1565c0" }}
+                          />
+                          <Typography variant="caption" sx={{ lineHeight: 1 }}>
+                            {getDisplayedLikes(msg)}
+                          </Typography>
+                        </Box>
+                      )}
+                      {getDisplayedDislikes(msg) > 0 && (
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.5,
+                          }}
+                        >
+                          <ThumbDownIcon
+                            sx={{ fontSize: 14, color: "#c62828" }}
+                          />
+                          <Typography variant="caption" sx={{ lineHeight: 1 }}>
+                            {getDisplayedDislikes(msg)}
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  )}
+                  {/* No side action stacks; plus menu instead */}
+                  <IconButton
+                    size="small"
+                    className="message-plus"
+                    aria-label="Akcje wiadomości"
+                    onClick={(e) => {
+                      setMenuAnchor(e.currentTarget);
+                      setMenuMsg(msg);
+                    }}
+                    sx={{
+                      opacity: 0,
+                      visibility: "hidden",
+                      transition: "opacity 0.15s ease",
+                      color: "#90a4ae",
+                      "&:hover": { backgroundColor: "#eceff1" },
+                    }}
+                  >
+                    <AddIcon fontSize="small" />
+                  </IconButton>
+                  {/* Right-side avatar for own messages */}
+                  {/* No external avatar for own messages; avatar is inside bubble. */}
+                </Box>
+              </React.Fragment>
             );
           })
         )}
+        {/* Typing indicator (local) */}
+        {newMessage?.trim() ? (
+          <Box
+            sx={{ display: "flex", justifyContent: "flex-end", pr: 1, pb: 0.5 }}
+          >
+            <Box
+              sx={{
+                backgroundColor: "#eceff1",
+                borderRadius: 2,
+                px: 1.25,
+                py: 0.75,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 0.5,
+                boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+              }}
+            >
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: 6,
+                  background: "#90a4ae",
+                  display: "inline-block",
+                  animation: "blink 1.2s infinite",
+                }}
+              />
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: 6,
+                  background: "#90a4ae",
+                  display: "inline-block",
+                  animation: "blink 1.2s 0.2s infinite",
+                }}
+              />
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: 6,
+                  background: "#90a4ae",
+                  display: "inline-block",
+                  animation: "blink 1.2s 0.4s infinite",
+                }}
+              />
+            </Box>
+          </Box>
+        ) : null}
+        <style>{`
+          @keyframes blink {
+            0% { opacity: 0.2; transform: translateY(0px); }
+            20% { opacity: 1; transform: translateY(-1px); }
+            100% { opacity: 0.2; transform: translateY(0px); }
+          }
+        `}</style>
+        {/* Scroll anchor */}
+        <div ref={bottomRef} />
       </CardContent>
+      {/* Lightbox dialog */}
+      <Dialog
+        open={!!lightboxUrl}
+        onClose={closeLightbox}
+        fullWidth
+        maxWidth="md"
+      >
+        <DialogContent sx={{ p: 0, backgroundColor: "#000" }}>
+          {lightboxUrl ? (
+            <img
+              src={lightboxUrl}
+              alt="Podgląd"
+              style={{ width: "100%", height: "auto", display: "block" }}
+              onClick={closeLightbox}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
       {/* Single contextual menu for like/dislike/delete */}
       <Menu
         anchorEl={menuAnchor}

@@ -15,11 +15,16 @@ import {
   DialogActions,
   TextField,
   Box,
+  Button,
+  Stack,
+  InputAdornment,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import { Task } from "./types";
 
 export interface TasksCardProps {
@@ -134,47 +139,70 @@ export default function TasksCard(props: TasksCardProps) {
       {/* Dialog dodawania zadania */}
       <Dialog open={adding} onClose={onCloseAdd} maxWidth="xs" fullWidth>
         <DialogTitle>Dodaj nowe zadanie</DialogTitle>
-        <DialogContent
-          sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2 }}
-        >
-          <TextField
-            label="Nazwa zadania"
-            value={newTaskTitle}
-            onChange={(e) => onChangeTitle(e.target.value)}
-            autoFocus
-            fullWidth
-          />
-          <Box sx={{ display: "flex", gap: 2 }}>
+        <DialogContent sx={{ pt: 2 }}>
+          <Stack spacing={2}>
             <TextField
-              label="Data"
-              type="date"
-              value={newTaskDate}
-              onChange={(e) => onChangeDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
+              label="Nazwa zadania"
+              placeholder="Np. Przygotować prezentację z biologii"
+              value={newTaskTitle}
+              onChange={(e) => onChangeTitle(e.target.value)}
+              autoFocus
               fullWidth
+              required
             />
-            <TextField
-              label="Godzina"
-              type="time"
-              value={newTaskTime}
-              onChange={(e) => onChangeTime(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              fullWidth
-            />
-          </Box>
-          {error && (
-            <Typography color="error" variant="body2">
-              {error}
-            </Typography>
-          )}
+            <Box sx={{ display: "flex", gap: 2 }}>
+              <TextField
+                label="Data"
+                type="date"
+                value={newTaskDate}
+                onChange={(e) => onChangeDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                fullWidth
+                required
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <CalendarTodayIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              <TextField
+                label="Godzina"
+                type="time"
+                value={newTaskTime}
+                onChange={(e) => onChangeTime(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                fullWidth
+                required
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <AccessTimeIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Box>
+            {error && (
+              <Typography color="error" variant="body2">
+                {error}
+              </Typography>
+            )}
+          </Stack>
         </DialogContent>
-        <DialogActions>
-          <IconButton onClick={onCloseAdd} color="secondary">
-            <DeleteIcon />
-          </IconButton>
-          <IconButton onClick={onSubmit} color="primary">
-            <AddIcon />
-          </IconButton>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={onCloseAdd} variant="outlined" color="inherit" startIcon={<DeleteIcon />}>
+            Anuluj
+          </Button>
+          <Button
+            onClick={onSubmit}
+            variant="contained"
+            startIcon={<AddIcon />}
+            disabled={!newTaskTitle.trim() || !newTaskDate || !newTaskTime}
+          >
+            Dodaj
+          </Button>
         </DialogActions>
       </Dialog>
     </Card>

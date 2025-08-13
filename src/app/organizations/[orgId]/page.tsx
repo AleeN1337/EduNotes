@@ -337,7 +337,13 @@ export default function OrganizationPage() {
   const mapNotesToMessages = (raw: any[]): Message[] =>
     (raw as any[]).map((m: any) => {
       const possibleUrl =
-        m.image_url || m.image || m.file_url || m.file || m.attachment_url || m.attachment || m.media_url;
+        m.image_url ||
+        m.image ||
+        m.file_url ||
+        m.file ||
+        m.attachment_url ||
+        m.attachment ||
+        m.media_url;
       let image_url: string | undefined;
       if (possibleUrl) {
         const urlStr = String(possibleUrl);
@@ -360,7 +366,12 @@ export default function OrganizationPage() {
   async function fetchMessagesForTopic(topicId: string) {
     const res = await api.get(`/notes/notes_in_topic?topic_id=${topicId}`);
     const raw = Array.isArray(res.data) ? res.data : unwrap<any[]>(res);
-    return mapNotesToMessages(raw);
+    const mapped = mapNotesToMessages(raw);
+    mapped.sort(
+      (a, b) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    return mapped;
   }
 
   // Load messages when topic selected
@@ -523,15 +534,23 @@ export default function OrganizationPage() {
       const titleBase = hasText
         ? newMessage.trim()
         : selectedFile?.name || "Załącznik";
-      const titleShort = titleBase.substring(0, 50) + (titleBase.length > 50 ? "..." : "");
+      const titleShort =
+        titleBase.substring(0, 50) + (titleBase.length > 50 ? "..." : "");
       formData.append("title", titleShort);
       // For file-only messages, use filename as content fallback
-      formData.append("content", hasText ? newMessage.trim() : selectedFile?.name || "Załącznik");
+      formData.append(
+        "content",
+        hasText ? newMessage.trim() : selectedFile?.name || "Załącznik"
+      );
       formData.append("topic_id", selectedTopic);
       formData.append("organization_id", orgId);
       // Set content type according to payload
-      const fileIsImage = selectedFile && selectedFile.type?.startsWith("image/");
-      formData.append("content_type", hasText ? "text" : fileIsImage ? "image" : "file");
+      const fileIsImage =
+        selectedFile && selectedFile.type?.startsWith("image/");
+      formData.append(
+        "content_type",
+        hasText ? "text" : fileIsImage ? "image" : "file"
+      );
       if (selectedFile) {
         formData.append("image", selectedFile);
       }
@@ -543,8 +562,8 @@ export default function OrganizationPage() {
       const createdNote = response.data.data ?? response.data;
       console.log("Note created:", createdNote);
 
-  setNewMessage("");
-  setSelectedFile(null);
+      setNewMessage("");
+      setSelectedFile(null);
       // Reload notes in topic
       setMessages(await fetchMessagesForTopic(selectedTopic));
     } catch (error: any) {
@@ -914,6 +933,7 @@ export default function OrganizationPage() {
             onChangeInviteEmail={setInviteEmail}
             onSendInvite={handleSendInvite}
             pendingInvitesCount={pendingInvites.length}
+            invites={pendingInvites}
           />
         </Box>
 
