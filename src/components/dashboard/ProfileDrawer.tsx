@@ -351,7 +351,7 @@ export default function ProfileDrawer({
           </Box>
         );
 
-  case 2: // Zmiana hasła (tab: Hasło)
+      case 2: // Zmiana hasła (tab: Hasło)
         return (
           <Box sx={{ p: 3 }}>
             <Typography
@@ -481,7 +481,7 @@ export default function ProfileDrawer({
           </Box>
         );
 
-  case 3: // Ustawienia (tab: Ustawienia)
+      case 3: // Ustawienia (tab: Ustawienia)
         return (
           <Box sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>

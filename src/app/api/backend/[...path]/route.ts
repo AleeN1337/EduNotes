@@ -40,8 +40,10 @@ async function handleBackendRequest(
   try {
     const backendUrl = process.env.BACKEND_URL || "http://localhost:8000";
     const path = pathParts.join("/");
-    // Forward exact path to backend
-    const url = `${backendUrl}/${path}`;
+    // Forward exact path to backend, preserving trailing slash from original request
+    const originalPathname = request.nextUrl.pathname;
+    const hasTrailingSlash = originalPathname.endsWith("/");
+    const url = `${backendUrl}/${path}${hasTrailingSlash ? "/" : ""}`;
 
     // Get the request body if it exists
     let body;

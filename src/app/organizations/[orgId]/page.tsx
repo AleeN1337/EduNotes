@@ -988,6 +988,7 @@ export default function OrganizationPage() {
               messageRatings={messageRatings}
               setMessageRatings={setMessageRatings}
               ratingsKey={ratingsKey}
+              topicId={selectedTopic}
             />
           </Box>
         </Box>

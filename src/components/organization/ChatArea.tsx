@@ -16,6 +16,8 @@ import {
   MenuItem,
   Dialog,
   DialogContent,
+  DialogTitle,
+  DialogActions,
   Chip,
 } from "@mui/material";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
@@ -47,6 +49,8 @@ export interface ChatAreaProps {
     React.SetStateAction<Record<string, { liked: boolean; disliked: boolean }>>
   >; // kept, not used
   ratingsKey: string; // kept, not used
+  // Currently selected topic id (required for backend AI summary endpoint)
+  topicId: string | null;
 }
 
 export default function ChatArea(props: ChatAreaProps) {
@@ -67,6 +71,7 @@ export default function ChatArea(props: ChatAreaProps) {
     messageRatings,
     setMessageRatings,
     ratingsKey,
+    topicId,
   } = props;
 
   // Robustly resolve current user id (fallback to localStorage if prop is missing)
@@ -209,6 +214,91 @@ export default function ChatArea(props: ChatAreaProps) {
   const openLightbox = (url: string) => setLightboxUrl(url);
   const closeLightbox = () => setLightboxUrl(null);
 
+  // Summary dialog state
+  const [summaryOpen, setSummaryOpen] = React.useState(false);
+  const [summaryLoading, setSummaryLoading] = React.useState(false);
+  const [summaryText, setSummaryText] = React.useState<string>("");
+  const [summaryError, setSummaryError] = React.useState<string>("");
+
+  const handleSummarize = async () => {
+    setSummaryOpen(true);
+    setSummaryLoading(true);
+    setSummaryError("");
+    setSummaryText("");
+    try {
+      let summary: string | null = null;
+      let lastErr: any = null;
+
+      // Backend-first: according to API contract, create summary via POST /ai_summary/?topic_id=...
+      if (topicId) {
+        try {
+          const res = await api.post(`/ai_summary/`, null, {
+            params: { topic_id: Number(topicId) },
+          });
+          const raw = res?.data ?? {};
+          const data = raw?.data ?? raw; // unwrap if wrapped
+          const candidate =
+            data?.summary_text || data?.summary || data?.text || "";
+          if (typeof candidate === "string" && candidate.length > 0) {
+            summary = candidate;
+          }
+        } catch (err1: any) {
+          lastErr = err1;
+          // Retry without trailing slash (some setups differ)
+          try {
+            const res2 = await api.post(`/ai_summary`, null, {
+              params: { topic_id: Number(topicId) },
+            });
+            const raw2 = res2?.data ?? {};
+            const data2 = raw2?.data ?? raw2;
+            const candidate2 =
+              data2?.summary_text || data2?.summary || data2?.text || "";
+            if (typeof candidate2 === "string" && candidate2.length > 0) {
+              summary = candidate2;
+            }
+          } catch (err2: any) {
+            lastErr = err2;
+          }
+        }
+      }
+
+      // Fallback to local summarizer if backend endpoints are unavailable
+      if (!summary) {
+        try {
+          const payload = {
+            messages: messages.map((m) => ({
+              id: String(m.id),
+              content: m.content ?? "",
+              created_at: m.created_at,
+              user_id: String(m.user_id),
+              image_url: m.image_url || null,
+            })),
+            locale: "pl",
+          } as any;
+          const resp = await fetch("/api/summarize", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const data = await resp.json();
+          if (!resp.ok) throw new Error(data?.error || "Błąd podsumowania");
+          summary = String(data.summary || "");
+        } catch (err: any) {
+          lastErr = err;
+        }
+      }
+
+      if (!summary) {
+        throw lastErr || new Error("Nie udało się wygenerować podsumowania");
+      }
+      setSummaryText(summary);
+    } catch (e: any) {
+      setSummaryError(e?.message || "Nie udało się wygenerować podsumowania");
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
   // Auto-scroll to bottom on messages or typing changes
   const bottomRef = React.useRef<HTMLDivElement | null>(null);
   React.useEffect(() => {
@@ -247,20 +337,30 @@ export default function ChatArea(props: ChatAreaProps) {
       }}
     >
       <CardHeader
-        avatar={<ChatBubbleOutlineIcon sx={{ color: "var(--primary)" }} />}
+        avatar={<ChatBubbleOutlineIcon sx={{ color: "#3498db" }} />}
         title={
-          <Typography variant="h6" sx={{ fontWeight: 600, color: "var(--foreground)" }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, color: "#2c3e50" }}>
             {title}
           </Typography>
         }
+        action={
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={handleSummarize}
+            disabled={!canSend || messages.length === 0}
+          >
+            Podsumuj
+          </Button>
+        }
         sx={{
           pb: 1,
-          backgroundColor: "var(--card)",
-          borderBottom: "1px solid var(--border)",
+          backgroundColor: "white",
+          borderBottom: "1px solid #e0e0e0",
         }}
       />
       <CardContent
-        sx={{ flex: 1, overflowY: "auto", pt: 1, backgroundColor: "var(--card)" }}
+        sx={{ flex: 1, overflowY: "auto", pt: 1, backgroundColor: "#fafafa" }}
       >
         {!canSend ? (
           <Box
@@ -440,11 +540,11 @@ export default function ChatArea(props: ChatAreaProps) {
                         display: "inline-flex",
                         alignItems: "center",
                         gap: 0.75,
-                        backgroundColor: "var(--muted)",
+                        backgroundColor: "#eceff1",
                         borderRadius: 999,
                         px: 1,
                         py: 0.25,
-                        color: "var(--muted-foreground)",
+                        color: "#546e7a",
                         fontSize: 12,
                       }}
                     >
@@ -457,7 +557,7 @@ export default function ChatArea(props: ChatAreaProps) {
                           }}
                         >
                           <ThumbUpIcon
-                            sx={{ fontSize: 14, color: "var(--primary)" }}
+                            sx={{ fontSize: 14, color: "#1565c0" }}
                           />
                           <Typography variant="caption" sx={{ lineHeight: 1 }}>
                             {getDisplayedLikes(msg)}
@@ -473,7 +573,7 @@ export default function ChatArea(props: ChatAreaProps) {
                           }}
                         >
                           <ThumbDownIcon
-                            sx={{ fontSize: 14, color: "var(--destructive)" }}
+                            sx={{ fontSize: 14, color: "#c62828" }}
                           />
                           <Typography variant="caption" sx={{ lineHeight: 1 }}>
                             {getDisplayedDislikes(msg)}
@@ -483,7 +583,7 @@ export default function ChatArea(props: ChatAreaProps) {
                     </Box>
                   )}
                   {/* No side action stacks; plus menu instead */}
-          <IconButton
+                  <IconButton
                     size="small"
                     className="message-plus"
                     aria-label="Akcje wiadomości"
@@ -495,8 +595,8 @@ export default function ChatArea(props: ChatAreaProps) {
                       opacity: 0,
                       visibility: "hidden",
                       transition: "opacity 0.15s ease",
-            color: "var(--muted-foreground)",
-            "&:hover": { backgroundColor: "var(--muted)" },
+                      color: "#90a4ae",
+                      "&:hover": { backgroundColor: "#eceff1" },
                     }}
                   >
                     <AddIcon fontSize="small" />
@@ -515,7 +615,7 @@ export default function ChatArea(props: ChatAreaProps) {
           >
             <Box
               sx={{
-                backgroundColor: "var(--muted)",
+                backgroundColor: "#eceff1",
                 borderRadius: 2,
                 px: 1.25,
                 py: 0.75,
@@ -530,7 +630,7 @@ export default function ChatArea(props: ChatAreaProps) {
                   width: 6,
                   height: 6,
                   borderRadius: 6,
-                  background: "var(--muted-foreground)",
+                  background: "#90a4ae",
                   display: "inline-block",
                   animation: "blink 1.2s infinite",
                 }}
@@ -540,7 +640,7 @@ export default function ChatArea(props: ChatAreaProps) {
                   width: 6,
                   height: 6,
                   borderRadius: 6,
-                  background: "var(--muted-foreground)",
+                  background: "#90a4ae",
                   display: "inline-block",
                   animation: "blink 1.2s 0.2s infinite",
                 }}
@@ -550,7 +650,7 @@ export default function ChatArea(props: ChatAreaProps) {
                   width: 6,
                   height: 6,
                   borderRadius: 6,
-                  background: "var(--muted-foreground)",
+                  background: "#90a4ae",
                   display: "inline-block",
                   animation: "blink 1.2s 0.4s infinite",
                 }}
@@ -586,6 +686,36 @@ export default function ChatArea(props: ChatAreaProps) {
           ) : null}
         </DialogContent>
       </Dialog>
+
+      {/* Summary dialog */}
+      <Dialog
+        open={summaryOpen}
+        onClose={() => setSummaryOpen(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Podsumowanie</DialogTitle>
+        <DialogContent dividers>
+          {summaryLoading ? (
+            <Typography variant="body2">Generuję podsumowanie…</Typography>
+          ) : summaryError ? (
+            <Typography color="error" variant="body2">
+              {summaryError}
+            </Typography>
+          ) : summaryText ? (
+            <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+              {summaryText}
+            </Typography>
+          ) : (
+            <Typography variant="body2">
+              Brak danych do wyświetlenia.
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSummaryOpen(false)}>Zamknij</Button>
+        </DialogActions>
+      </Dialog>
       {/* Single contextual menu for like/dislike/delete */}
       <Menu
         anchorEl={menuAnchor}
@@ -616,13 +746,13 @@ export default function ChatArea(props: ChatAreaProps) {
             closeMenu();
           }}
         >
-    <ThumbUpIcon
+          <ThumbUpIcon
             fontSize="small"
             style={{
               marginRight: 8,
               color:
                 menuMsg && messageRatings[menuMsg.id]?.liked
-      ? "var(--primary)"
+                  ? "#1565c0"
                   : undefined,
             }}
           />
@@ -650,13 +780,13 @@ export default function ChatArea(props: ChatAreaProps) {
             closeMenu();
           }}
         >
-    <ThumbDownIcon
+          <ThumbDownIcon
             fontSize="small"
             style={{
               marginRight: 8,
               color:
                 menuMsg && messageRatings[menuMsg.id]?.disliked
-      ? "var(--destructive)"
+                  ? "#c62828"
                   : undefined,
             }}
           />
@@ -672,7 +802,7 @@ export default function ChatArea(props: ChatAreaProps) {
           >
             <DeleteIcon
               fontSize="small"
-              style={{ marginRight: 8, color: "var(--destructive)" }}
+              style={{ marginRight: 8, color: "#e53935" }}
             />
             Usuń
           </MenuItem>
@@ -680,19 +810,19 @@ export default function ChatArea(props: ChatAreaProps) {
       </Menu>
       <Divider />
       <CardActions
-        sx={{ p: 2, flexDirection: "column", gap: 1, backgroundColor: "var(--card)" }}
+        sx={{ p: 2, flexDirection: "column", gap: 1, backgroundColor: "white" }}
       >
         {selectedFile && (
           <Box
             sx={{
               width: "100%",
               p: 1,
-              backgroundColor: "var(--muted)",
+              backgroundColor: "#f0f8ff",
               borderRadius: 1,
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              border: "1px solid var(--border)",
+              border: "1px solid #e3f2fd",
             }}
           >
             <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -701,7 +831,7 @@ export default function ChatArea(props: ChatAreaProps) {
             <IconButton
               size="small"
               onClick={onRemoveFile}
-              sx={{ color: "var(--destructive)", "&:hover": { backgroundColor: "var(--muted)" } }}
+              sx={{ "&:hover": { backgroundColor: "#e74c3c", color: "white" } }}
             >
               <DeleteIcon fontSize="small" />
             </IconButton>
@@ -735,8 +865,8 @@ export default function ChatArea(props: ChatAreaProps) {
             <IconButton
               component="span"
               sx={{
-                color: "var(--muted-foreground)",
-                "&:hover": { backgroundColor: "var(--muted)", color: "var(--foreground)" },
+                color: "#7f8c8d",
+                "&:hover": { backgroundColor: "#ecf0f1", color: "#2c3e50" },
               }}
             >
               <AttachFileIcon />
@@ -752,9 +882,8 @@ export default function ChatArea(props: ChatAreaProps) {
               textTransform: "none",
               fontWeight: 500,
               minWidth: "80px",
-              backgroundColor: "var(--primary)",
-              color: "var(--primary-foreground)",
-              "&:hover": { opacity: 0.95 },
+              backgroundColor: "#3498db",
+              "&:hover": { backgroundColor: "#2980b9" },
             }}
           >
             Wyślij
