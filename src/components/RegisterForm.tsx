@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -31,6 +31,17 @@ export default function RegisterForm({
   const [hint, setHint] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // Auto-hide error/hint after 4 seconds
+  useEffect(() => {
+    if (error || hint) {
+      const timer = setTimeout(() => {
+        setError("");
+        setHint("");
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [error, hint]);
+
   const {
     register,
     handleSubmit,
@@ -59,19 +70,21 @@ export default function RegisterForm({
       if (result?.success) {
         onSuccess?.();
       } else {
-        setError(result?.message || "Wystąpił błąd podczas rejestracji");
+        // Do not setError here; error will be handled in catch block
+        throw new Error(result?.message || "Wystąpił błąd podczas rejestracji");
       }
     } catch (err) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : "Wystąpił błąd podczas rejestracji";
-      setError(msg);
-      // Podpowiedź dla 422/dublikatów
-      if (/422|istnieje|zaj(et|ę)ty|exists|duplicate|unique/i.test(msg)) {
-        setHint(
-          "Wygląda na to, że konto już istnieje lub dane są nieprawidłowe. Jeśli konto istnieje — przejdź do logowania."
+      const msg = err instanceof Error ? err.message : "Something went wrong";
+      // Wzorzec dla duplikatu
+      const duplicate =
+        /422|istnieje|zaj(et|ę)ty|exists|duplicate|unique/i.test(msg);
+      if (duplicate) {
+        setError(
+          "Konto z takim adresem e-mail lub nazwą użytkownika już istnieje. Użyj innego lub przejdź do logowania."
         );
+        setHint("");
+      } else {
+        setError(msg);
       }
     } finally {
       setIsLoading(false);
@@ -95,24 +108,21 @@ export default function RegisterForm({
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {error && (
-            <Box className="mb-4 space-y-2">
-              <Alert severity="error">{error}</Alert>
-              {hint && (
-                <Alert severity="info">
-                  {hint}
-                  {onSwitchToLogin && (
-                    <Button
-                      size="small"
-                      variant="text"
-                      onClick={onSwitchToLogin}
-                      disabled={isLoading}
-                      sx={{ ml: 1 }}
-                    >
-                      Przejdź do logowania
-                    </Button>
-                  )}
-                </Alert>
-              )}
+            <Box className="mb-4">
+              <Alert severity="error">
+                {error}
+                {/logowania\.$/i.test(error) && onSwitchToLogin && (
+                  <Button
+                    size="small"
+                    variant="text"
+                    onClick={onSwitchToLogin}
+                    disabled={isLoading}
+                    sx={{ ml: 1 }}
+                  >
+                    Przejdź do logowania
+                  </Button>
+                )}
+              </Alert>
             </Box>
           )}
 

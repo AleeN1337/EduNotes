@@ -1,11 +1,10 @@
 FastAPI
- 0.1.0 
+0.1.0
 OAS 3.1
 /openapi.json
 
 Authorize
 auth
-
 
 POST
 /auth/register
@@ -21,15 +20,15 @@ application/json
 Example Value
 Schema
 {
-  "username": "string",
-  "email": "string",
-  "password": "string",
-  "first_name": "string",
-  "last_name": "string"
+"username": "string",
+"email": "string",
+"password": "string",
+"first_name": "string",
+"last_name": "string"
 }
 Responses
-Code	Description	Links
-201	
+Code Description Links
+201
 Successful Response
 
 Media type
@@ -39,21 +38,21 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "user_id": 0,
-    "username": "string",
-    "email": "string",
-    "first_name": "string",
-    "last_name": "string",
-    "score": 0,
-    "avatar_url": "string",
-    "rank": "niekompetentny"
-  }
+"success": true,
+"message": "string",
+"data": {
+"user_id": 0,
+"username": "string",
+"email": "string",
+"first_name": "string",
+"last_name": "string",
+"score": 0,
+"avatar_url": "string",
+"rank": "niekompetentny"
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -62,16 +61,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -100,8 +99,8 @@ string | (string | null)
 client_secret
 string | (string | null)($password)
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -111,11 +110,11 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "access_token": "string",
-  "token_type": "string"
+"access_token": "string",
+"token_type": "string"
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -124,25 +123,23 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 users
 
-
 PUT
 /users/{user_id}/change_password
 Change Password
-
 
 Parameters
 Try it out
@@ -151,13 +148,13 @@ No parameters
 Request body
 
 application/x-www-form-urlencoded
-old_password *
+old_password _
 string
-new_password *
+new_password _
 string
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -168,7 +165,7 @@ Example Value
 Schema
 "string"
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -177,23 +174,22 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
 PUT
 /users/{user_id}/avatar
 Update User Avatar
-
 
 Parameters
 Try it out
@@ -202,11 +198,11 @@ No parameters
 Request body
 
 multipart/form-data
-file *
+file \*
 string($binary)
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -217,7 +213,7 @@ Example Value
 Schema
 "string"
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -226,16 +222,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -248,8 +244,8 @@ Try it out
 No parameters
 
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -259,20 +255,20 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": [
-    {
-      "user_id": 0,
-      "username": "string",
-      "email": "string",
-      "first_name": "string",
-      "last_name": "string",
-      "score": 0,
-      "avatar_url": "string",
-      "rank": "niekompetentny"
-    }
-  ]
+"success": true,
+"message": "string",
+"data": [
+{
+"user_id": 0,
+"username": "string",
+"email": "string",
+"first_name": "string",
+"last_name": "string",
+"score": 0,
+"avatar_url": "string",
+"rank": "niekompetentny"
+}
+]
 }
 No links
 
@@ -282,14 +278,14 @@ Read User
 
 Parameters
 Try it out
-Name	Description
-user_id *
+Name Description
+user_id \*
 integer
 (path)
 user_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -299,21 +295,21 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "user_id": 0,
-    "username": "string",
-    "email": "string",
-    "first_name": "string",
-    "last_name": "string",
-    "score": 0,
-    "avatar_url": "string",
-    "rank": "niekompetentny"
-  }
+"success": true,
+"message": "string",
+"data": {
+"user_id": 0,
+"username": "string",
+"email": "string",
+"first_name": "string",
+"last_name": "string",
+"score": 0,
+"avatar_url": "string",
+"rank": "niekompetentny"
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -322,16 +318,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -339,14 +335,13 @@ DELETE
 /users/{user_id}
 Delete User
 
-
 Parameters
 Try it out
 No parameters
 
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -356,18 +351,18 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "user_id": 0,
-    "username": "string",
-    "email": "string",
-    "first_name": "string",
-    "last_name": "string",
-    "score": 0,
-    "avatar_url": "string",
-    "rank": "niekompetentny"
-  }
+"success": true,
+"message": "string",
+"data": {
+"user_id": 0,
+"username": "string",
+"email": "string",
+"first_name": "string",
+"last_name": "string",
+"score": 0,
+"avatar_url": "string",
+"rank": "niekompetentny"
+}
 }
 No links
 
@@ -377,8 +372,8 @@ Update User
 
 Parameters
 Try it out
-Name	Description
-user_id *
+Name Description
+user_id \*
 integer
 (path)
 user_id
@@ -388,15 +383,15 @@ application/json
 Example Value
 Schema
 {
-  "username": "string",
-  "email": "string",
-  "first_name": "string",
-  "last_name": "string",
-  "password": "string"
+"username": "string",
+"email": "string",
+"first_name": "string",
+"last_name": "string",
+"password": "string"
 }
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -406,21 +401,21 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "user_id": 0,
-    "username": "string",
-    "email": "string",
-    "first_name": "string",
-    "last_name": "string",
-    "score": 0,
-    "avatar_url": "string",
-    "rank": "niekompetentny"
-  }
+"success": true,
+"message": "string",
+"data": {
+"user_id": 0,
+"username": "string",
+"email": "string",
+"first_name": "string",
+"last_name": "string",
+"score": 0,
+"avatar_url": "string",
+"rank": "niekompetentny"
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -429,33 +424,31 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 organizations
 
-
 GET
 /organizations/my
 Read My Organizations
-
 
 Parameters
 Try it out
 No parameters
 
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -465,16 +458,16 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": [
-    {
-      "organization_id": 0,
-      "organization_name": "string",
-      "created_at": "2025-07-31T11:45:23.004Z",
-      "updated_at": "2025-07-31T11:45:23.004Z"
-    }
-  ]
+"success": true,
+"message": "string",
+"data": [
+{
+"organization_id": 0,
+"organization_name": "string",
+"created_at": "2025-07-31T11:45:23.004Z",
+"updated_at": "2025-07-31T11:45:23.004Z"
+}
+]
 }
 No links
 
@@ -487,8 +480,8 @@ Try it out
 No parameters
 
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -498,23 +491,22 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": [
-    {
-      "organization_id": 0,
-      "organization_name": "string",
-      "created_at": "2025-07-31T11:45:23.005Z",
-      "updated_at": "2025-07-31T11:45:23.005Z"
-    }
-  ]
+"success": true,
+"message": "string",
+"data": [
+{
+"organization_id": 0,
+"organization_name": "string",
+"created_at": "2025-07-31T11:45:23.005Z",
+"updated_at": "2025-07-31T11:45:23.005Z"
+}
+]
 }
 No links
 
 POST
 /organizations/
 Create Organization
-
 
 Parameters
 Try it out
@@ -526,11 +518,11 @@ application/json
 Example Value
 Schema
 {
-  "organization_name": "string"
+"organization_name": "string"
 }
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -540,17 +532,17 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "organization_id": 0,
-    "organization_name": "string",
-    "created_at": "2025-07-31T11:45:23.007Z",
-    "updated_at": "2025-07-31T11:45:23.007Z"
-  }
+"success": true,
+"message": "string",
+"data": {
+"organization_id": 0,
+"organization_name": "string",
+"created_at": "2025-07-31T11:45:23.007Z",
+"updated_at": "2025-07-31T11:45:23.007Z"
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -559,16 +551,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -578,14 +570,14 @@ Read Organization
 
 Parameters
 Try it out
-Name	Description
-organization_id *
+Name Description
+organization_id \*
 integer
 (path)
 organization_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -595,17 +587,17 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "organization_id": 0,
-    "organization_name": "string",
-    "created_at": "2025-07-31T11:45:23.009Z",
-    "updated_at": "2025-07-31T11:45:23.009Z"
-  }
+"success": true,
+"message": "string",
+"data": {
+"organization_id": 0,
+"organization_name": "string",
+"created_at": "2025-07-31T11:45:23.009Z",
+"updated_at": "2025-07-31T11:45:23.009Z"
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -614,16 +606,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -631,17 +623,16 @@ DELETE
 /organizations/{organization_id}
 Delete Organization
 
-
 Parameters
 Try it out
-Name	Description
-organization_id *
+Name Description
+organization_id \*
 integer
 (path)
 organization_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -651,17 +642,17 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "organization_id": 0,
-    "organization_name": "string",
-    "created_at": "2025-07-31T11:45:23.012Z",
-    "updated_at": "2025-07-31T11:45:23.012Z"
-  }
+"success": true,
+"message": "string",
+"data": {
+"organization_id": 0,
+"organization_name": "string",
+"created_at": "2025-07-31T11:45:23.012Z",
+"updated_at": "2025-07-31T11:45:23.012Z"
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -670,16 +661,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -689,8 +680,8 @@ Update Organization
 
 Parameters
 Try it out
-Name	Description
-organization_id *
+Name Description
+organization_id \*
 integer
 (path)
 organization_id
@@ -700,11 +691,11 @@ application/json
 Example Value
 Schema
 {
-  "organization_name": "string"
+"organization_name": "string"
 }
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -714,17 +705,17 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "organization_id": 0,
-    "organization_name": "string",
-    "created_at": "2025-07-31T11:45:23.019Z",
-    "updated_at": "2025-07-31T11:45:23.019Z"
-  }
+"success": true,
+"message": "string",
+"data": {
+"organization_id": 0,
+"organization_name": "string",
+"created_at": "2025-07-31T11:45:23.019Z",
+"updated_at": "2025-07-31T11:45:23.019Z"
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -733,20 +724,19 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 channels
-
 
 GET
 /channels/channels_in_organization
@@ -754,14 +744,14 @@ Read Channels In Organization
 
 Parameters
 Try it out
-Name	Description
-organization_id *
+Name Description
+organization_id \*
 integer
 (query)
 organization_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -771,20 +761,20 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": [
-    {
-      "channel_id": 0,
-      "channel_name": "string",
-      "organization_id": 0,
-      "created_at": "2025-07-31T11:45:23.021Z",
-      "updated_at": "2025-07-31T11:45:23.021Z"
-    }
-  ]
+"success": true,
+"message": "string",
+"data": [
+{
+"channel_id": 0,
+"channel_name": "string",
+"organization_id": 0,
+"created_at": "2025-07-31T11:45:23.021Z",
+"updated_at": "2025-07-31T11:45:23.021Z"
+}
+]
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -793,16 +783,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -815,8 +805,8 @@ Try it out
 No parameters
 
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -826,17 +816,17 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": [
-    {
-      "channel_id": 0,
-      "channel_name": "string",
-      "organization_id": 0,
-      "created_at": "2025-07-31T11:45:23.023Z",
-      "updated_at": "2025-07-31T11:45:23.023Z"
-    }
-  ]
+"success": true,
+"message": "string",
+"data": [
+{
+"channel_id": 0,
+"channel_name": "string",
+"organization_id": 0,
+"created_at": "2025-07-31T11:45:23.023Z",
+"updated_at": "2025-07-31T11:45:23.023Z"
+}
+]
 }
 No links
 
@@ -854,12 +844,12 @@ application/json
 Example Value
 Schema
 {
-  "channel_name": "string",
-  "organization_id": 0
+"channel_name": "string",
+"organization_id": 0
 }
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -869,18 +859,18 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "channel_id": 0,
-    "channel_name": "string",
-    "organization_id": 0,
-    "created_at": "2025-07-31T11:45:23.025Z",
-    "updated_at": "2025-07-31T11:45:23.025Z"
-  }
+"success": true,
+"message": "string",
+"data": {
+"channel_id": 0,
+"channel_name": "string",
+"organization_id": 0,
+"created_at": "2025-07-31T11:45:23.025Z",
+"updated_at": "2025-07-31T11:45:23.025Z"
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -889,16 +879,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -908,14 +898,14 @@ Read Channel
 
 Parameters
 Try it out
-Name	Description
-channel_id *
+Name Description
+channel_id \*
 integer
 (path)
 channel_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -925,18 +915,18 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "channel_id": 0,
-    "channel_name": "string",
-    "organization_id": 0,
-    "created_at": "2025-07-31T11:45:23.028Z",
-    "updated_at": "2025-07-31T11:45:23.028Z"
-  }
+"success": true,
+"message": "string",
+"data": {
+"channel_id": 0,
+"channel_name": "string",
+"organization_id": 0,
+"created_at": "2025-07-31T11:45:23.028Z",
+"updated_at": "2025-07-31T11:45:23.028Z"
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -945,16 +935,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -962,17 +952,16 @@ DELETE
 /channels/{channel_id}
 Delete Channel
 
-
 Parameters
 Try it out
-Name	Description
-channel_id *
+Name Description
+channel_id \*
 integer
 (path)
 channel_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -982,18 +971,18 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "channel_id": 0,
-    "channel_name": "string",
-    "organization_id": 0,
-    "created_at": "2025-07-31T11:45:23.030Z",
-    "updated_at": "2025-07-31T11:45:23.030Z"
-  }
+"success": true,
+"message": "string",
+"data": {
+"channel_id": 0,
+"channel_name": "string",
+"organization_id": 0,
+"created_at": "2025-07-31T11:45:23.030Z",
+"updated_at": "2025-07-31T11:45:23.030Z"
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -1002,16 +991,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -1021,8 +1010,8 @@ Update Channel
 
 Parameters
 Try it out
-Name	Description
-channel_id *
+Name Description
+channel_id \*
 integer
 (path)
 channel_id
@@ -1032,12 +1021,12 @@ application/json
 Example Value
 Schema
 {
-  "channel_name": "string",
-  "organization_id": 0
+"channel_name": "string",
+"organization_id": 0
 }
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -1047,18 +1036,18 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "channel_id": 0,
-    "channel_name": "string",
-    "organization_id": 0,
-    "created_at": "2025-07-31T11:45:23.033Z",
-    "updated_at": "2025-07-31T11:45:23.033Z"
-  }
+"success": true,
+"message": "string",
+"data": {
+"channel_id": 0,
+"channel_name": "string",
+"organization_id": 0,
+"created_at": "2025-07-31T11:45:23.033Z",
+"updated_at": "2025-07-31T11:45:23.033Z"
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -1067,20 +1056,19 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 topics
-
 
 GET
 /topics/topics_in_channel
@@ -1088,14 +1076,14 @@ Read Topics In Channel
 
 Parameters
 Try it out
-Name	Description
-channel_id *
+Name Description
+channel_id \*
 integer
 (query)
 channel_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -1105,21 +1093,21 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": [
-    {
-      "topic_id": 0,
-      "topic_name": "string",
-      "channel_id": 0,
-      "organization_id": 0,
-      "created_at": "2025-07-31T11:45:23.035Z",
-      "updated_at": "2025-07-31T11:45:23.035Z"
-    }
-  ]
+"success": true,
+"message": "string",
+"data": [
+{
+"topic_id": 0,
+"topic_name": "string",
+"channel_id": 0,
+"organization_id": 0,
+"created_at": "2025-07-31T11:45:23.035Z",
+"updated_at": "2025-07-31T11:45:23.035Z"
+}
+]
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -1128,16 +1116,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -1150,8 +1138,8 @@ Try it out
 No parameters
 
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -1161,18 +1149,18 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": [
-    {
-      "topic_id": 0,
-      "topic_name": "string",
-      "channel_id": 0,
-      "organization_id": 0,
-      "created_at": "2025-07-31T11:45:23.037Z",
-      "updated_at": "2025-07-31T11:45:23.037Z"
-    }
-  ]
+"success": true,
+"message": "string",
+"data": [
+{
+"topic_id": 0,
+"topic_name": "string",
+"channel_id": 0,
+"organization_id": 0,
+"created_at": "2025-07-31T11:45:23.037Z",
+"updated_at": "2025-07-31T11:45:23.037Z"
+}
+]
 }
 No links
 
@@ -1190,13 +1178,13 @@ application/json
 Example Value
 Schema
 {
-  "topic_name": "string",
-  "channel_id": 0,
-  "organization_id": 0
+"topic_name": "string",
+"channel_id": 0,
+"organization_id": 0
 }
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -1206,19 +1194,19 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "topic_id": 0,
-    "topic_name": "string",
-    "channel_id": 0,
-    "organization_id": 0,
-    "created_at": "2025-07-31T11:45:23.039Z",
-    "updated_at": "2025-07-31T11:45:23.039Z"
-  }
+"success": true,
+"message": "string",
+"data": {
+"topic_id": 0,
+"topic_name": "string",
+"channel_id": 0,
+"organization_id": 0,
+"created_at": "2025-07-31T11:45:23.039Z",
+"updated_at": "2025-07-31T11:45:23.039Z"
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -1227,16 +1215,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -1246,14 +1234,14 @@ Read Topic
 
 Parameters
 Try it out
-Name	Description
-topic_id *
+Name Description
+topic_id \*
 integer
 (path)
 topic_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -1263,19 +1251,19 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "topic_id": 0,
-    "topic_name": "string",
-    "channel_id": 0,
-    "organization_id": 0,
-    "created_at": "2025-07-31T11:45:23.041Z",
-    "updated_at": "2025-07-31T11:45:23.041Z"
-  }
+"success": true,
+"message": "string",
+"data": {
+"topic_id": 0,
+"topic_name": "string",
+"channel_id": 0,
+"organization_id": 0,
+"created_at": "2025-07-31T11:45:23.041Z",
+"updated_at": "2025-07-31T11:45:23.041Z"
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -1284,16 +1272,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -1303,14 +1291,14 @@ Delete Topic
 
 Parameters
 Try it out
-Name	Description
-topic_id *
+Name Description
+topic_id \*
 integer
 (path)
 topic_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -1320,19 +1308,19 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "topic_id": 0,
-    "topic_name": "string",
-    "channel_id": 0,
-    "organization_id": 0,
-    "created_at": "2025-07-31T11:45:23.043Z",
-    "updated_at": "2025-07-31T11:45:23.043Z"
-  }
+"success": true,
+"message": "string",
+"data": {
+"topic_id": 0,
+"topic_name": "string",
+"channel_id": 0,
+"organization_id": 0,
+"created_at": "2025-07-31T11:45:23.043Z",
+"updated_at": "2025-07-31T11:45:23.043Z"
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -1341,16 +1329,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -1360,8 +1348,8 @@ Update Topic
 
 Parameters
 Try it out
-Name	Description
-topic_id *
+Name Description
+topic_id \*
 integer
 (path)
 topic_id
@@ -1371,13 +1359,13 @@ application/json
 Example Value
 Schema
 {
-  "topic_name": "string",
-  "channel_id": 0,
-  "organization_id": 0
+"topic_name": "string",
+"channel_id": 0,
+"organization_id": 0
 }
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -1387,19 +1375,19 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "topic_id": 0,
-    "topic_name": "string",
-    "channel_id": 0,
-    "organization_id": 0,
-    "created_at": "2025-07-31T11:45:23.047Z",
-    "updated_at": "2025-07-31T11:45:23.047Z"
-  }
+"success": true,
+"message": "string",
+"data": {
+"topic_id": 0,
+"topic_name": "string",
+"channel_id": 0,
+"organization_id": 0,
+"created_at": "2025-07-31T11:45:23.047Z",
+"updated_at": "2025-07-31T11:45:23.047Z"
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -1408,33 +1396,31 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 notes
 
-
 GET
 /notes/my
 Read My Notes
-
 
 Parameters
 Try it out
 No parameters
 
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -1444,23 +1430,23 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": [
-    {
-      "note_id": 0,
-      "title": "string",
-      "topic_id": 0,
-      "organization_id": 0,
-      "user_id": 0,
-      "content_type": "string",
-      "content": "string",
-      "image_url": "string",
-      "likes": 0,
-      "created_at": "2025-07-31T11:45:23.049Z",
-      "updated_at": "2025-07-31T11:45:23.049Z"
-    }
-  ]
+"success": true,
+"message": "string",
+"data": [
+{
+"note_id": 0,
+"title": "string",
+"topic_id": 0,
+"organization_id": 0,
+"user_id": 0,
+"content_type": "string",
+"content": "string",
+"image_url": "string",
+"likes": 0,
+"created_at": "2025-07-31T11:45:23.049Z",
+"updated_at": "2025-07-31T11:45:23.049Z"
+}
+]
 }
 No links
 
@@ -1470,14 +1456,14 @@ Read Notes In Topic
 
 Parameters
 Try it out
-Name	Description
-topic_id *
+Name Description
+topic_id \*
 integer
 (query)
 topic_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -1487,26 +1473,26 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": [
-    {
-      "note_id": 0,
-      "title": "string",
-      "topic_id": 0,
-      "organization_id": 0,
-      "user_id": 0,
-      "content_type": "string",
-      "content": "string",
-      "image_url": "string",
-      "likes": 0,
-      "created_at": "2025-07-31T11:45:23.050Z",
-      "updated_at": "2025-07-31T11:45:23.050Z"
-    }
-  ]
+"success": true,
+"message": "string",
+"data": [
+{
+"note_id": 0,
+"title": "string",
+"topic_id": 0,
+"organization_id": 0,
+"user_id": 0,
+"content_type": "string",
+"content": "string",
+"image_url": "string",
+"likes": 0,
+"created_at": "2025-07-31T11:45:23.050Z",
+"updated_at": "2025-07-31T11:45:23.050Z"
+}
+]
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -1515,16 +1501,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -1532,17 +1518,16 @@ POST
 /notes/give_like
 Give Like
 
-
 Parameters
 Try it out
-Name	Description
-note_id *
+Name Description
+note_id \*
 integer
 (query)
 note_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -1552,14 +1537,14 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "additionalProp1": {}
-  }
+"success": true,
+"message": "string",
+"data": {
+"additionalProp1": {}
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -1568,16 +1553,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -1585,17 +1570,16 @@ POST
 /notes/give_dislike
 Give Dislike
 
-
 Parameters
 Try it out
-Name	Description
-note_id *
+Name Description
+note_id \*
 integer
 (query)
 note_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -1605,14 +1589,14 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "additionalProp1": {}
-  }
+"success": true,
+"message": "string",
+"data": {
+"additionalProp1": {}
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -1621,16 +1605,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -1643,8 +1627,8 @@ Try it out
 No parameters
 
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -1654,30 +1638,29 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": [
-    {
-      "note_id": 0,
-      "title": "string",
-      "topic_id": 0,
-      "organization_id": 0,
-      "user_id": 0,
-      "content_type": "string",
-      "content": "string",
-      "image_url": "string",
-      "likes": 0,
-      "created_at": "2025-07-31T11:45:23.055Z",
-      "updated_at": "2025-07-31T11:45:23.055Z"
-    }
-  ]
+"success": true,
+"message": "string",
+"data": [
+{
+"note_id": 0,
+"title": "string",
+"topic_id": 0,
+"organization_id": 0,
+"user_id": 0,
+"content_type": "string",
+"content": "string",
+"image_url": "string",
+"likes": 0,
+"created_at": "2025-07-31T11:45:23.055Z",
+"updated_at": "2025-07-31T11:45:23.055Z"
+}
+]
 }
 No links
 
 POST
 /notes/
 Create Note
-
 
 Parameters
 Try it out
@@ -1686,21 +1669,21 @@ No parameters
 Request body
 
 multipart/form-data
-title *
+title _
 string
-topic_id *
+topic_id _
 integer
-organization_id *
+organization_id _
 integer
-content_type *
+content_type _
 string
 content
 string | (string | null)
 image
 string | (string | null)($binary)
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -1710,24 +1693,24 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "note_id": 0,
-    "title": "string",
-    "topic_id": 0,
-    "organization_id": 0,
-    "user_id": 0,
-    "content_type": "string",
-    "content": "string",
-    "image_url": "string",
-    "likes": 0,
-    "created_at": "2025-07-31T11:45:23.060Z",
-    "updated_at": "2025-07-31T11:45:23.060Z"
-  }
+"success": true,
+"message": "string",
+"data": {
+"note_id": 0,
+"title": "string",
+"topic_id": 0,
+"organization_id": 0,
+"user_id": 0,
+"content_type": "string",
+"content": "string",
+"image_url": "string",
+"likes": 0,
+"created_at": "2025-07-31T11:45:23.060Z",
+"updated_at": "2025-07-31T11:45:23.060Z"
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -1736,16 +1719,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -1755,14 +1738,14 @@ Read Note
 
 Parameters
 Try it out
-Name	Description
-note_id *
+Name Description
+note_id \*
 integer
 (path)
 note_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -1772,24 +1755,24 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "note_id": 0,
-    "title": "string",
-    "topic_id": 0,
-    "organization_id": 0,
-    "user_id": 0,
-    "content_type": "string",
-    "content": "string",
-    "image_url": "string",
-    "likes": 0,
-    "created_at": "2025-07-31T11:45:23.063Z",
-    "updated_at": "2025-07-31T11:45:23.063Z"
-  }
+"success": true,
+"message": "string",
+"data": {
+"note_id": 0,
+"title": "string",
+"topic_id": 0,
+"organization_id": 0,
+"user_id": 0,
+"content_type": "string",
+"content": "string",
+"image_url": "string",
+"likes": 0,
+"created_at": "2025-07-31T11:45:23.063Z",
+"updated_at": "2025-07-31T11:45:23.063Z"
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -1798,16 +1781,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -1817,14 +1800,14 @@ Delete Note
 
 Parameters
 Try it out
-Name	Description
-note_id *
+Name Description
+note_id \*
 integer
 (path)
 note_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -1834,24 +1817,24 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "note_id": 0,
-    "title": "string",
-    "topic_id": 0,
-    "organization_id": 0,
-    "user_id": 0,
-    "content_type": "string",
-    "content": "string",
-    "image_url": "string",
-    "likes": 0,
-    "created_at": "2025-07-31T11:45:23.065Z",
-    "updated_at": "2025-07-31T11:45:23.065Z"
-  }
+"success": true,
+"message": "string",
+"data": {
+"note_id": 0,
+"title": "string",
+"topic_id": 0,
+"organization_id": 0,
+"user_id": 0,
+"content_type": "string",
+"content": "string",
+"image_url": "string",
+"likes": 0,
+"created_at": "2025-07-31T11:45:23.065Z",
+"updated_at": "2025-07-31T11:45:23.065Z"
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -1860,33 +1843,31 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 organization_users
 
-
 GET
 /organization_users/me
 Get Current User Organizations
-
 
 Parameters
 Try it out
 No parameters
 
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -1896,16 +1877,16 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": [
-    {
-      "organization_id": 0,
-      "user_id": 0,
-      "role": "string",
-      "updated_at": "2025-07-31T11:45:23.066Z"
-    }
-  ]
+"success": true,
+"message": "string",
+"data": [
+{
+"organization_id": 0,
+"user_id": 0,
+"role": "string",
+"updated_at": "2025-07-31T11:45:23.066Z"
+}
+]
 }
 No links
 
@@ -1915,18 +1896,18 @@ Get User Role
 
 Parameters
 Try it out
-Name	Description
-organization_id *
+Name Description
+organization_id _
 integer
 (path)
 organization_id
-user_id *
+user_id _
 integer
 (path)
 user_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -1936,14 +1917,14 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "additionalProp1": {}
-  }
+"success": true,
+"message": "string",
+"data": {
+"additionalProp1": {}
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -1952,16 +1933,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -1971,12 +1952,12 @@ Update User Role
 
 Parameters
 Try it out
-Name	Description
-organization_id *
+Name Description
+organization_id _
 integer
 (path)
 organization_id
-user_id *
+user_id _
 integer
 (path)
 user_id
@@ -1986,8 +1967,8 @@ application/x-www-form-urlencoded
 role
 string
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -1997,14 +1978,14 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "additionalProp1": {}
-  }
+"success": true,
+"message": "string",
+"data": {
+"additionalProp1": {}
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -2013,16 +1994,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -2030,15 +2011,14 @@ POST
 /organization_users/invite
 Invite User To Organization
 
-
 Parameters
 Try it out
-Name	Description
-organization_id *
+Name Description
+organization_id _
 integer
 (query)
 organization_id
-invited_user_id *
+invited_user_id _
 integer
 (query)
 invited_user_id
@@ -2048,8 +2028,8 @@ application/x-www-form-urlencoded
 role
 string
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -2059,14 +2039,14 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "additionalProp1": {}
-  }
+"success": true,
+"message": "string",
+"data": {
+"additionalProp1": {}
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -2075,16 +2055,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -2092,21 +2072,20 @@ DELETE
 /organization_users/RemoveUserFromOrganization
 Remove User From Organization
 
-
 Parameters
 Try it out
-Name	Description
-organization_id *
+Name Description
+organization_id _
 integer
 (query)
 organization_id
-user_id *
+user_id _
 integer
 (query)
 user_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -2116,17 +2095,17 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "organization_id": 0,
-    "user_id": 0,
-    "role": "string",
-    "updated_at": "2025-07-31T11:45:23.078Z"
-  }
+"success": true,
+"message": "string",
+"data": {
+"organization_id": 0,
+"user_id": 0,
+"role": "string",
+"updated_at": "2025-07-31T11:45:23.078Z"
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -2135,16 +2114,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -2157,8 +2136,8 @@ Try it out
 No parameters
 
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -2168,16 +2147,16 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": [
-    {
-      "organization_id": 0,
-      "user_id": 0,
-      "role": "string",
-      "updated_at": "2025-07-31T11:45:23.079Z"
-    }
-  ]
+"success": true,
+"message": "string",
+"data": [
+{
+"organization_id": 0,
+"user_id": 0,
+"role": "string",
+"updated_at": "2025-07-31T11:45:23.079Z"
+}
+]
 }
 No links
 
@@ -2187,12 +2166,12 @@ Create Organization User
 
 Parameters
 Try it out
-Name	Description
-organization_id *
+Name Description
+organization_id _
 integer
 (query)
 organization_id
-user_id *
+user_id _
 integer
 (query)
 user_id
@@ -2202,8 +2181,8 @@ application/x-www-form-urlencoded
 role
 string
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -2213,17 +2192,17 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "organization_id": 0,
-    "user_id": 0,
-    "role": "string",
-    "updated_at": "2025-07-31T11:45:23.082Z"
-  }
+"success": true,
+"message": "string",
+"data": {
+"organization_id": 0,
+"user_id": 0,
+"role": "string",
+"updated_at": "2025-07-31T11:45:23.082Z"
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -2232,16 +2211,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -2251,14 +2230,14 @@ Read Organization User
 
 Parameters
 Try it out
-Name	Description
-organization_id *
+Name Description
+organization_id \*
 integer
 (path)
 organization_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -2268,19 +2247,19 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": [
-    {
-      "organization_id": 0,
-      "user_id": 0,
-      "role": "string",
-      "updated_at": "2025-07-31T11:45:23.084Z"
-    }
-  ]
+"success": true,
+"message": "string",
+"data": [
+{
+"organization_id": 0,
+"user_id": 0,
+"role": "string",
+"updated_at": "2025-07-31T11:45:23.084Z"
+}
+]
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -2289,16 +2268,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -2308,18 +2287,18 @@ Delete Organization User
 
 Parameters
 Try it out
-Name	Description
-organization_id *
+Name Description
+organization_id _
 integer
 (path)
 organization_id
-user_id *
+user_id _
 integer
 (path)
 user_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -2329,12 +2308,12 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": "string"
+"success": true,
+"message": "string",
+"data": "string"
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -2343,47 +2322,44 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 Organization Invitations
-
 
 POST
 /organization-invitations/
 Invite User
 
-
 Parameters
 Try it out
-Name	Description
-organization_id *
+Name Description
+organization_id _
 integer
 (query)
 organization_id
-email *
+email _
 string
 (query)
 email
-role *
+role \*
 string
 (query)
 Available values : user, owner
 
-
 user
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -2393,20 +2369,20 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "invitation_id": 0,
-    "organization_id": 0,
-    "email": "string",
-    "role": "user",
-    "status": "pending",
-    "invited_by_user_id": 0,
-    "created_at": "2025-07-31T11:45:23.090Z"
-  }
+"success": true,
+"message": "string",
+"data": {
+"invitation_id": 0,
+"organization_id": 0,
+"email": "string",
+"role": "user",
+"status": "pending",
+"invited_by_user_id": 0,
+"created_at": "2025-07-31T11:45:23.090Z"
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -2415,16 +2391,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -2432,17 +2408,16 @@ POST
 /organization-invitations/{invitation_id}/decline
 Decline Invitation
 
-
 Parameters
 Try it out
-Name	Description
-invitation_id *
+Name Description
+invitation_id \*
 integer
 (path)
 invitation_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -2452,12 +2427,12 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": "string"
+"success": true,
+"message": "string",
+"data": "string"
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -2466,16 +2441,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -2483,17 +2458,16 @@ POST
 /organization-invitations/{invitation_id}/accept
 Accept Invitation
 
-
 Parameters
 Try it out
-Name	Description
-invitation_id *
+Name Description
+invitation_id \*
 integer
 (path)
 invitation_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -2503,12 +2477,12 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": "string"
+"success": true,
+"message": "string",
+"data": "string"
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -2517,16 +2491,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -2534,14 +2508,13 @@ GET
 /organization-invitations/my
 My Invitations
 
-
 Parameters
 Try it out
 No parameters
 
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -2551,19 +2524,19 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": [
-    {
-      "invitation_id": 0,
-      "organization_id": 0,
-      "email": "string",
-      "role": "user",
-      "status": "pending",
-      "invited_by_user_id": 0,
-      "created_at": "2025-07-31T11:45:23.095Z"
-    }
-  ]
+"success": true,
+"message": "string",
+"data": [
+{
+"invitation_id": 0,
+"organization_id": 0,
+"email": "string",
+"role": "user",
+"status": "pending",
+"invited_by_user_id": 0,
+"created_at": "2025-07-31T11:45:23.095Z"
+}
+]
 }
 No links
 
@@ -2571,14 +2544,13 @@ GET
 /organization-invitations/sent
 Sent Invitations
 
-
 Parameters
 Try it out
 No parameters
 
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -2588,36 +2560,34 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": [
-    {
-      "invitation_id": 0,
-      "organization_id": 0,
-      "email": "string",
-      "role": "user",
-      "status": "pending",
-      "invited_by_user_id": 0,
-      "created_at": "2025-07-31T11:45:23.096Z"
-    }
-  ]
+"success": true,
+"message": "string",
+"data": [
+{
+"invitation_id": 0,
+"organization_id": 0,
+"email": "string",
+"role": "user",
+"status": "pending",
+"invited_by_user_id": 0,
+"created_at": "2025-07-31T11:45:23.096Z"
+}
+]
 }
 No links
 ranking
-
 
 GET
 /ranking/my
 Get My Score
 
-
 Parameters
 Try it out
 No parameters
 
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -2627,11 +2597,11 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "additionalProp1": {}
-  }
+"success": true,
+"message": "string",
+"data": {
+"additionalProp1": {}
+}
 }
 No links
 
@@ -2644,8 +2614,8 @@ Try it out
 No parameters
 
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -2655,13 +2625,13 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": [
-    {
-      "additionalProp1": {}
-    }
-  ]
+"success": true,
+"message": "string",
+"data": [
+{
+"additionalProp1": {}
+}
+]
 }
 No links
 
@@ -2671,14 +2641,14 @@ Get User Score
 
 Parameters
 Try it out
-Name	Description
-user_id *
+Name Description
+user_id \*
 integer
 (path)
 user_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -2688,14 +2658,14 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "additionalProp1": {}
-  }
+"success": true,
+"message": "string",
+"data": {
+"additionalProp1": {}
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -2704,33 +2674,31 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 deadlines
 
-
 GET
 /deadlines/my_deadlines
 Get My Deadlines
-
 
 Parameters
 Try it out
 No parameters
 
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -2740,24 +2708,24 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": [
-    {
-      "deadline_id": 0,
-      "event_type": "Egzamin",
-      "event_name": "string",
-      "event_description": "string",
-      "event_date": "2025-07-31T11:45:23.100Z",
-      "organization_id": 0,
-      "created_by": 0,
-      "created_at": "2025-07-31T11:45:23.100Z",
-      "updated_at": "2025-07-31T11:45:23.100Z"
-    }
-  ]
+"success": true,
+"message": "string",
+"data": [
+{
+"deadline_id": 0,
+"event_type": "Egzamin",
+"event_name": "string",
+"event_description": "string",
+"event_date": "2025-07-31T11:45:23.100Z",
+"organization_id": 0,
+"created_by": 0,
+"created_at": "2025-07-31T11:45:23.100Z",
+"updated_at": "2025-07-31T11:45:23.100Z"
+}
+]
 }
 No links
-404	
+404
 Not found
 
 No links
@@ -2771,8 +2739,8 @@ Try it out
 No parameters
 
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -2782,24 +2750,24 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": [
-    {
-      "deadline_id": 0,
-      "event_type": "Egzamin",
-      "event_name": "string",
-      "event_description": "string",
-      "event_date": "2025-07-31T11:45:23.101Z",
-      "organization_id": 0,
-      "created_by": 0,
-      "created_at": "2025-07-31T11:45:23.101Z",
-      "updated_at": "2025-07-31T11:45:23.101Z"
-    }
-  ]
+"success": true,
+"message": "string",
+"data": [
+{
+"deadline_id": 0,
+"event_type": "Egzamin",
+"event_name": "string",
+"event_description": "string",
+"event_date": "2025-07-31T11:45:23.101Z",
+"organization_id": 0,
+"created_by": 0,
+"created_at": "2025-07-31T11:45:23.101Z",
+"updated_at": "2025-07-31T11:45:23.101Z"
+}
+]
 }
 No links
-404	
+404
 Not found
 
 No links
@@ -2808,7 +2776,6 @@ POST
 /deadlines/
 Create Deadline
 
-
 Parameters
 Try it out
 No parameters
@@ -2816,19 +2783,19 @@ No parameters
 Request body
 
 application/x-www-form-urlencoded
-event_type *
+event_type _
 string
-event_name *
+event_name _
 string
 event_description
 string | (string | null)
-event_date *
+event_date _
 string($date-time)
-organization_id *
+organization_id _
 integer
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -2838,26 +2805,26 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "deadline_id": 0,
-    "event_type": "Egzamin",
-    "event_name": "string",
-    "event_description": "string",
-    "event_date": "2025-07-31T11:45:23.106Z",
-    "organization_id": 0,
-    "created_by": 0,
-    "created_at": "2025-07-31T11:45:23.106Z",
-    "updated_at": "2025-07-31T11:45:23.106Z"
-  }
+"success": true,
+"message": "string",
+"data": {
+"deadline_id": 0,
+"event_type": "Egzamin",
+"event_name": "string",
+"event_description": "string",
+"event_date": "2025-07-31T11:45:23.106Z",
+"organization_id": 0,
+"created_by": 0,
+"created_at": "2025-07-31T11:45:23.106Z",
+"updated_at": "2025-07-31T11:45:23.106Z"
+}
 }
 No links
-404	
+404
 Not found
 
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -2866,16 +2833,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -2885,14 +2852,14 @@ Read Deadline
 
 Parameters
 Try it out
-Name	Description
-deadline_id *
+Name Description
+deadline_id \*
 integer
 (path)
 deadline_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -2902,26 +2869,26 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "deadline_id": 0,
-    "event_type": "Egzamin",
-    "event_name": "string",
-    "event_description": "string",
-    "event_date": "2025-07-31T11:45:23.108Z",
-    "organization_id": 0,
-    "created_by": 0,
-    "created_at": "2025-07-31T11:45:23.108Z",
-    "updated_at": "2025-07-31T11:45:23.108Z"
-  }
+"success": true,
+"message": "string",
+"data": {
+"deadline_id": 0,
+"event_type": "Egzamin",
+"event_name": "string",
+"event_description": "string",
+"event_date": "2025-07-31T11:45:23.108Z",
+"organization_id": 0,
+"created_by": 0,
+"created_at": "2025-07-31T11:45:23.108Z",
+"updated_at": "2025-07-31T11:45:23.108Z"
+}
 }
 No links
-404	
+404
 Not found
 
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -2930,16 +2897,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -2949,25 +2916,25 @@ Update Deadline
 
 Parameters
 Try it out
-Name	Description
-deadline_id *
+Name Description
+deadline_id \*
 integer
 (path)
 deadline_id
 Request body
 
 application/x-www-form-urlencoded
-event_type *
+event_type _
 string
-event_name *
+event_name _
 string
 event_description
 string | (string | null)
-event_date *
+event_date \*
 string($date-time)
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -2977,26 +2944,26 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "deadline_id": 0,
-    "event_type": "Egzamin",
-    "event_name": "string",
-    "event_description": "string",
-    "event_date": "2025-07-31T11:45:23.113Z",
-    "organization_id": 0,
-    "created_by": 0,
-    "created_at": "2025-07-31T11:45:23.113Z",
-    "updated_at": "2025-07-31T11:45:23.113Z"
-  }
+"success": true,
+"message": "string",
+"data": {
+"deadline_id": 0,
+"event_type": "Egzamin",
+"event_name": "string",
+"event_description": "string",
+"event_date": "2025-07-31T11:45:23.113Z",
+"organization_id": 0,
+"created_by": 0,
+"created_at": "2025-07-31T11:45:23.113Z",
+"updated_at": "2025-07-31T11:45:23.113Z"
+}
 }
 No links
-404	
+404
 Not found
 
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -3005,16 +2972,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -3024,14 +2991,14 @@ Delete Deadline
 
 Parameters
 Try it out
-Name	Description
-deadline_id *
+Name Description
+deadline_id \*
 integer
 (path)
 deadline_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -3041,16 +3008,16 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": "string"
+"success": true,
+"message": "string",
+"data": "string"
 }
 No links
-404	
+404
 Not found
 
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -3059,33 +3026,31 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 Notifications
 
-
 GET
 /notifications/my
 Get My Notifications
-
 
 Parameters
 Try it out
 No parameters
 
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -3095,17 +3060,17 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": [
-    {
-      "notification_id": 0,
-      "user_id": 0,
-      "status": "string",
-      "message": "string",
-      "created_at": "2025-07-31T11:45:23.123Z"
-    }
-  ]
+"success": true,
+"message": "string",
+"data": [
+{
+"notification_id": 0,
+"user_id": 0,
+"status": "string",
+"message": "string",
+"created_at": "2025-07-31T11:45:23.123Z"
+}
+]
 }
 No links
 
@@ -3113,17 +3078,16 @@ PUT
 /notifications/{notification_id}/read
 Mark Notification As Read
 
-
 Parameters
 Try it out
-Name	Description
-notification_id *
+Name Description
+notification_id \*
 integer
 (path)
 notification_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -3133,18 +3097,18 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "notification_id": 0,
-    "user_id": 0,
-    "status": "string",
-    "message": "string",
-    "created_at": "2025-07-31T11:45:23.124Z"
-  }
+"success": true,
+"message": "string",
+"data": {
+"notification_id": 0,
+"user_id": 0,
+"status": "string",
+"message": "string",
+"created_at": "2025-07-31T11:45:23.124Z"
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -3153,16 +3117,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -3170,17 +3134,16 @@ DELETE
 /notifications/{notification_id}
 Delete My Notification
 
-
 Parameters
 Try it out
-Name	Description
-notification_id *
+Name Description
+notification_id \*
 integer
 (path)
 notification_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -3190,18 +3153,18 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "notification_id": 0,
-    "user_id": 0,
-    "status": "string",
-    "message": "string",
-    "created_at": "2025-07-31T11:45:23.126Z"
-  }
+"success": true,
+"message": "string",
+"data": {
+"notification_id": 0,
+"user_id": 0,
+"status": "string",
+"message": "string",
+"created_at": "2025-07-31T11:45:23.126Z"
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -3210,16 +3173,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -3229,14 +3192,14 @@ Get Notification
 
 Parameters
 Try it out
-Name	Description
-notification_id *
+Name Description
+notification_id \*
 integer
 (path)
 notification_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -3246,18 +3209,18 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "notification_id": 0,
-    "user_id": 0,
-    "status": "string",
-    "message": "string",
-    "created_at": "2025-07-31T11:45:23.128Z"
-  }
+"success": true,
+"message": "string",
+"data": {
+"notification_id": 0,
+"user_id": 0,
+"status": "string",
+"message": "string",
+"created_at": "2025-07-31T11:45:23.128Z"
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -3266,16 +3229,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -3288,8 +3251,8 @@ Try it out
 No parameters
 
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -3299,17 +3262,17 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": [
-    {
-      "notification_id": 0,
-      "user_id": 0,
-      "status": "string",
-      "message": "string",
-      "created_at": "2025-07-31T11:45:23.130Z"
-    }
-  ]
+"success": true,
+"message": "string",
+"data": [
+{
+"notification_id": 0,
+"user_id": 0,
+"status": "string",
+"message": "string",
+"created_at": "2025-07-31T11:45:23.130Z"
+}
+]
 }
 No links
 
@@ -3317,14 +3280,13 @@ DELETE
 /notifications/
 Delete All My Notifications
 
-
 Parameters
 Try it out
 No parameters
 
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -3334,21 +3296,21 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": [
-    {
-      "notification_id": 0,
-      "user_id": 0,
-      "status": "string",
-      "message": "string",
-      "created_at": "2025-07-31T11:45:23.131Z"
-    }
-  ]
+"success": true,
+"message": "string",
+"data": [
+{
+"notification_id": 0,
+"user_id": 0,
+"status": "string",
+"message": "string",
+"created_at": "2025-07-31T11:45:23.131Z"
+}
+]
 }
 No links
-AI Summary
 
+AI Summary
 
 GET
 /ai_summary/
@@ -3359,8 +3321,8 @@ Try it out
 No parameters
 
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -3370,17 +3332,17 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": [
-    {
-      "summary_id": 0,
-      "topic_id": 0,
-      "summary_text": "string",
-      "created_at": "2025-07-31T11:45:23.132Z",
-      "updated_at": "2025-07-31T11:45:23.132Z"
-    }
-  ]
+"success": true,
+"message": "string",
+"data": [
+{
+"summary_id": 0,
+"topic_id": 0,
+"summary_text": "string",
+"created_at": "2025-07-31T11:45:23.132Z",
+"updated_at": "2025-07-31T11:45:23.132Z"
+}
+]
 }
 No links
 
@@ -3390,14 +3352,14 @@ Create Ai Summary
 
 Parameters
 Try it out
-Name	Description
-topic_id *
+Name Description
+topic_id \*
 integer
 (query)
 topic_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -3407,18 +3369,18 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "summary_id": 0,
-    "topic_id": 0,
-    "summary_text": "string",
-    "created_at": "2025-07-31T11:45:23.133Z",
-    "updated_at": "2025-07-31T11:45:23.133Z"
-  }
+"success": true,
+"message": "string",
+"data": {
+"summary_id": 0,
+"topic_id": 0,
+"summary_text": "string",
+"created_at": "2025-07-31T11:45:23.133Z",
+"updated_at": "2025-07-31T11:45:23.133Z"
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -3427,16 +3389,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -3446,18 +3408,18 @@ Update Ai Summary
 
 Parameters
 Try it out
-Name	Description
-summary_id *
+Name Description
+summary_id _
 integer
 (path)
 summary_id
-topic_id *
+topic_id _
 integer
 (query)
 topic_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -3467,18 +3429,18 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": {
-    "summary_id": 0,
-    "topic_id": 0,
-    "summary_text": "string",
-    "created_at": "2025-07-31T11:45:23.136Z",
-    "updated_at": "2025-07-31T11:45:23.136Z"
-  }
+"success": true,
+"message": "string",
+"data": {
+"summary_id": 0,
+"topic_id": 0,
+"summary_text": "string",
+"created_at": "2025-07-31T11:45:23.136Z",
+"updated_at": "2025-07-31T11:45:23.136Z"
+}
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -3487,16 +3449,16 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 
@@ -3506,14 +3468,14 @@ Delete Ai Summary
 
 Parameters
 Try it out
-Name	Description
-summary_id *
+Name Description
+summary_id \*
 integer
 (path)
 summary_id
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -3523,12 +3485,12 @@ Controls Accept header.
 Example Value
 Schema
 {
-  "success": true,
-  "message": "string",
-  "data": "string"
+"success": true,
+"message": "string",
+"data": "string"
 }
 No links
-422	
+422
 Validation Error
 
 Media type
@@ -3537,20 +3499,19 @@ application/json
 Example Value
 Schema
 {
-  "detail": [
-    {
-      "loc": [
-        "string",
-        0
-      ],
-      "msg": "string",
-      "type": "string"
-    }
-  ]
+"detail": [
+{
+"loc": [
+"string",
+0
+],
+"msg": "string",
+"type": "string"
+}
+]
 }
 No links
 default
-
 
 GET
 /
@@ -3561,8 +3522,8 @@ Try it out
 No parameters
 
 Responses
-Code	Description	Links
-200	
+Code Description Links
+200
 Successful Response
 
 Media type
@@ -3575,17 +3536,17 @@ Schema
 No links
 
 Schemas
-Body_change_password_users__user_id__change_password_putCollapse allobject
+Body_change_password_users**user_id**change_password_putCollapse allobject
 old_passwordstring
 new_passwordstring
-Body_create_note_notes__postCollapse allobject
+Body_create_note_notes**postCollapse allobject
 titlestring
 topic_idinteger
 organization_idinteger
 content_typeExpand allstring
 contentExpand all(string | null)
 imageExpand all(string | null)
-Body_create_organization_user_organization_users__postCollapse allobject
+Body_create_organization_user_organization_users**postCollapse allobject
 roleExpand allstring
 Body_invite_user_to_organization_organization_users_invite_postCollapse allobject
 roleExpand allstring
@@ -3606,9 +3567,9 @@ client_secretCollapse allstring | (string | null)password
 Any ofCollapse all(string | null)
 #0string
 #1null
-Body_update_user_avatar_users__user_id__avatar_putCollapse allobject
+Body_update_user_avatar_users**user_id**avatar_putCollapse allobject
 filestringbinary
-Body_update_user_role_organization_users__organization_id___user_id__role_putCollapse allobject
+Body_update_user_role_organization_users**organization*id***user_id\_\_role_putCollapse allobject
 roleExpand allstring
 CreateChannelRequestCollapse allobject
 channel_namestring

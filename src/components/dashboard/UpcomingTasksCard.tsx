@@ -58,7 +58,10 @@ export default function UpcomingTasksCard({ orgIds }: UpcomingTasksCardProps) {
         return;
       } catch (err: any) {
         if (err?.response?.status !== 404) {
-          console.warn("/deadlines/my_deadlines failed, trying /deadlines/", err);
+          console.warn(
+            "/deadlines/my_deadlines failed, trying /deadlines/",
+            err
+          );
         }
       }
 

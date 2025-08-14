@@ -110,13 +110,7 @@ export default function DashboardHeader({
                 <Typography variant="body2">
                   Zaproszenie do: <strong>{inv.organization_name}</strong>
                 </Typography>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ mb: 1 }}
-                >
-                  Zaproszony przez: {inv.inviter}
-                </Typography>
+                {/* Usunięto linię z zapraszającym na życzenie użytkownika */}
                 <Box sx={{ display: "flex", gap: 1 }}>
                   <Button
                     size="small"

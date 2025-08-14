@@ -153,7 +153,10 @@ export default function Sidebar(props: SidebarProps) {
       <CardHeader
         avatar={<BookIcon sx={{ color: "var(--foreground)" }} />}
         title={
-          <Typography variant="h6" sx={{ fontWeight: 600, color: "var(--foreground)" }}>
+          <Typography
+            variant="h6"
+            sx={{ fontWeight: 600, color: "var(--foreground)" }}
+          >
             Przedmioty i Tematy
           </Typography>
         }
@@ -192,7 +195,7 @@ export default function Sidebar(props: SidebarProps) {
             <Typography variant="body2">
               {search.trim()
                 ? "Brak wyników"
-                : "Brak przedmiotów. Użyj pola \"Nowy przedmiot\" aby dodać."}
+                : 'Brak przedmiotów. Użyj pola "Nowy przedmiot" aby dodać.'}
             </Typography>
           </Box>
         ) : null}
@@ -211,7 +214,9 @@ export default function Sidebar(props: SidebarProps) {
                   sx={{
                     borderRadius: 2,
                     backgroundColor:
-                      selectedChannel === cid ? "var(--secondary)" : "transparent",
+                      selectedChannel === cid
+                        ? "var(--secondary)"
+                        : "transparent",
                     "&:hover": { backgroundColor: "var(--muted)" },
                   }}
                 >
@@ -248,14 +253,14 @@ export default function Sidebar(props: SidebarProps) {
                       </Box>
                     }
                   />
-      <Tooltip title="Więcej">
+                  <Tooltip title="Więcej">
                     <IconButton
                       edge="end"
                       size="small"
                       onClick={(e) => openChannelMenu(e, cid)}
                       sx={{
-        color: "var(--muted-foreground)",
-        "&:hover": { backgroundColor: "var(--muted)" },
+                        color: "var(--muted-foreground)",
+                        "&:hover": { backgroundColor: "var(--muted)" },
                       }}
                     >
                       <MoreVertIcon fontSize="small" />
@@ -264,15 +269,15 @@ export default function Sidebar(props: SidebarProps) {
                 </ListItemButton>
 
                 <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-      <List sx={{ pl: 2, py: 0 }}>
+                  <List sx={{ pl: 2, py: 0 }}>
                     {addingTopicToChannel === cid && (
                       <Box
                         sx={{
-        p: 2,
-        backgroundColor: "var(--secondary)",
+                          p: 2,
+                          backgroundColor: "var(--secondary)",
                           borderRadius: 2,
                           mb: 1,
-        border: "1px solid var(--border)",
+                          border: "1px solid var(--border)",
                         }}
                       >
                         <TextField
@@ -346,13 +351,13 @@ export default function Sidebar(props: SidebarProps) {
                           />
                         </ListItemButton>
                         <Tooltip title="Więcej">
-              <IconButton
+                          <IconButton
                             size="small"
                             onClick={(e) => openTopicMenu(e, String(topic.id))}
                             sx={{
                               mr: 1,
-                color: "var(--muted-foreground)",
-                "&:hover": { backgroundColor: "var(--muted)" },
+                              color: "var(--muted-foreground)",
+                              "&:hover": { backgroundColor: "var(--muted)" },
                             }}
                           >
                             <MoreVertIcon fontSize="small" />
@@ -368,16 +373,34 @@ export default function Sidebar(props: SidebarProps) {
         </List>
       </CardContent>
       <Divider />
-  <Box sx={{ p: 2, backgroundColor: "var(--sidebar)" }}>
-        <TextField
-          fullWidth
-          size="small"
-          placeholder="Nowy przedmiot"
-          value={newChannelName}
-          onChange={(e) => onChangeChannelName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && onAddChannel()}
-          sx={{ mr: 1 }}
-        />
+      <Box sx={{ p: 2, backgroundColor: "var(--sidebar)" }}>
+        <Box sx={{ display: "flex", gap: 1 }}>
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Nowy przedmiot"
+            value={newChannelName}
+            onChange={(e) => onChangeChannelName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && onAddChannel()}
+          />
+          <IconButton
+            color="primary"
+            size="small"
+            onClick={() => onAddChannel()}
+            disabled={!newChannelName.trim()}
+            sx={{
+              border: "1px solid var(--border)",
+              backgroundColor: "var(--card)",
+              "&:hover": { backgroundColor: "var(--muted)" },
+              height: 40,
+              width: 40,
+              alignSelf: "center",
+            }}
+            aria-label="Dodaj przedmiot"
+          >
+            <AddIcon fontSize="small" />
+          </IconButton>
+        </Box>
       </Box>
       <InvitationsPanel
         inviteEmail={inviteEmail}

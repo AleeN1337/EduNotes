@@ -82,6 +82,7 @@ export default function UserProfilePanel({
   const [panelOrgsCount, setPanelOrgsCount] = useState<number>(
     organizations.length
   );
+  const avatarUrl = (user as any)?.avatar_url || null; // Display-only avatar URL
 
   useEffect(() => {
     const loadNotes = async () => {
@@ -142,26 +143,22 @@ export default function UserProfilePanel({
 
         <Divider sx={{ mb: 3 }} />
 
-        {/* User Avatar and Basic Info */}
+        {/* User Avatar and Basic Info (display only, avatar change removed) */}
         <Box sx={{ textAlign: "center", mb: 3 }}>
-          <Box
+          <Avatar
+            src={avatarUrl || undefined}
             sx={{
-              width: 80,
-              height: 80,
-              borderRadius: "50%",
-              bgcolor: "primary.main",
-              color: "white",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "2rem",
-              fontWeight: "bold",
+              width: 88,
+              height: 88,
               mx: "auto",
-              mb: 2,
+              mb: 1.5,
+              fontSize: "2rem",
+              fontWeight: 700,
+              bgcolor: "primary.main",
             }}
           >
-            {getInitials(user)}
-          </Box>
+            {!avatarUrl && getInitials(user)}
+          </Avatar>
           <Typography variant="h6" gutterBottom>
             {getDisplayName(user)}
           </Typography>
@@ -176,7 +173,7 @@ export default function UserProfilePanel({
         <Card variant="outlined">
           <CardContent>
             <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
-              Szczegóły konta
+              Informacje ogólne
             </Typography>
 
             <List disablePadding>

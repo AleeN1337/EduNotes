@@ -9,6 +9,7 @@ import {
   Card,
   CardContent,
 } from "@mui/material";
+import ConfirmDialog from "@/components/common/ConfirmDialog";
 import { AuthAPI } from "@/lib/authApiWithFallback";
 import {
   ProfileAPI,
@@ -69,25 +70,51 @@ export default function Dashboard() {
   const [orgStats, setOrgStats] = useState<
     Record<string, { members: number; channels: number }>
   >({});
+  // Confirm dialog for organization deletion
+  const [confirmOrg, setConfirmOrg] = useState<{
+    open: boolean;
+    orgId: string | null;
+    orgName: string;
+  }>({ open: false, orgId: null, orgName: "" });
+  const [confirmOrgLoading, setConfirmOrgLoading] = useState(false);
 
   const router = useRouter();
 
-  // Helper: resolve current user's numeric ID reliably
+  // Helper: resolve current user's numeric ID reliably (multi-strategy)
   const resolveUserId = async (): Promise<number | undefined> => {
-    const idNum = Number((user as any)?.id);
-    if (!Number.isNaN(idNum) && idNum > 0) return idNum;
-    // Try to resolve by email via users list
+    // 1. Direct numeric id already present
+    const direct = Number((user as any)?.id);
+    if (!Number.isNaN(direct) && direct > 0) return direct;
+
+    const email = (user as any)?.email;
+
+    // 2. Try decode JWT (auth_token) for common fields (user_id / id / sub)
     try {
-      const email = (user as any)?.email;
-      if (!email) return undefined;
-      const resp = await api.get(`/users/`);
-      const list = Array.isArray(resp.data?.data) ? resp.data.data : [];
-      const found = list.find((u: any) => u.email === email);
-      if (found?.user_id) return Number(found.user_id);
+      const token = localStorage.getItem("auth_token");
+      if (token && token.split(".").length === 3) {
+        const payloadRaw = token.split(".")[1];
+        const json = JSON.parse(atob(payloadRaw.replace(/-/g, "+").replace(/_/g, "/")));
+        const jwtId = Number(json.user_id || json.id || json.sub);
+        if (!Number.isNaN(jwtId) && jwtId > 0) return jwtId;
+      }
     } catch (e) {
-      console.warn("Dashboard: resolveUserId failed", e);
+      console.warn("Dashboard: resolveUserId JWT decode failed", e);
     }
-    return undefined;
+
+  // 3. As a last resort, check /organization_users/me (might contain memberships with user_id)
+    try {
+      const meRes = await api.get(`/organization_users/me`);
+      const arr = Array.isArray(meRes.data?.data) ? meRes.data.data : [];
+      if (arr.length > 0) {
+        const anyMembership = arr.find((m: any) => m.user_id) || arr[0];
+        const mid = Number(anyMembership?.user_id);
+        if (!Number.isNaN(mid) && mid > 0) return mid;
+      }
+    } catch (e) {
+      console.warn("Dashboard: resolveUserId organization_users/me failed", e);
+    }
+
+    return undefined; // give up
   };
 
   // Funkcja do pokazywania powiadomień
@@ -179,17 +206,50 @@ export default function Dashboard() {
     try {
       const res = await api.get(`/organization-invitations/my`);
       const raw = Array.isArray(res.data) ? res.data : res.data.data ?? [];
-      setMyInvites(
-        (raw as any[])
-          .filter((i) => i.status === "pending")
-          .map((i) => ({
-            id: i.invitation_id,
-            organization_id: i.organization_id,
-            email: i.email,
-            role: i.role,
-            created_at: i.created_at,
-          }))
-      );
+      const pending = (raw as any[]).filter((i) => i.status === "pending");
+      const base = pending.map((i) => ({
+        id: i.invitation_id,
+        organization_id: i.organization_id,
+        email: i.email,
+        role: i.role,
+        created_at: i.created_at,
+        organization_name: i.organization_name || i.org_name || "",
+        inviter:
+          i.invited_by ||
+          i.inviter_email ||
+          i.created_by ||
+          i.inviter ||
+          i.sender_email ||
+          i.owner_email ||
+          i.email,
+      }));
+      // Find missing names (empty string)
+      const missing = [
+        ...new Set(
+          base.filter((b) => !b.organization_name).map((b) => b.organization_id)
+        ),
+      ];
+      const nameMap: Record<string, string> = {};
+      if (missing.length) {
+        await Promise.all(
+          missing.map(async (oid) => {
+            try {
+              const oRes = await api.get(`/organizations/${oid}`);
+              const oData = oRes.data?.data || oRes.data;
+              if (oData?.organization_name)
+                nameMap[String(oid)] = oData.organization_name;
+            } catch {}
+          })
+        );
+      }
+      const enriched = base.map((b) => ({
+        ...b,
+        organization_name:
+          b.organization_name ||
+          nameMap[String(b.organization_id)] ||
+          `Organizacja ${b.organization_id}`,
+      }));
+      setMyInvites(enriched);
     } catch (err: any) {
       // If endpoint not found, treat as no invites; only log unexpected errors
       if (err.response?.status !== 404) {
@@ -207,24 +267,58 @@ export default function Dashboard() {
     id: inv.id,
     organization_id: inv.organization_id,
     organization_name:
+      inv.organization_name ||
       userOrganizations.find((org) => org.id === inv.organization_id)
-        ?.organization_name || "",
-    inviter: inv.email,
+        ?.organization_name ||
+      "",
+    inviter: inv.inviter || inv.email,
   }));
 
   // Accept or decline invitation
   const acceptInvite = async (id: number) => {
     try {
+      const inv = myInvites.find((i) => i.id === id);
       await api.post(`/organization-invitations/${id}/accept`);
       setMyInvites((prev) => prev.filter((i) => i.id !== id));
       // refresh organizations list
       loadOrganizations();
+      if (inv) {
+        const orgName =
+          inv.organization_name ||
+          userOrganizations.find((o) => o.id === inv.organization_id)
+            ?.organization_name ||
+          `Organizacja ${inv.organization_id}`;
+        showNotification(
+          `Dołączyłeś do organizacji: ${orgName} (zaproszenie od: ${
+            inv.inviter || inv.email
+          })`,
+          "success"
+        );
+      } else {
+        showNotification("Zaproszenie zaakceptowane", "success");
+      }
     } catch {}
   };
   const declineInvite = async (id: number) => {
     try {
+      const inv = myInvites.find((i) => i.id === id);
       await api.post(`/organization-invitations/${id}/decline`);
       setMyInvites((prev) => prev.filter((i) => i.id !== id));
+      if (inv) {
+        const orgName =
+          inv.organization_name ||
+          userOrganizations.find((o) => o.id === inv.organization_id)
+            ?.organization_name ||
+          `Organizacja ${inv.organization_id}`;
+        showNotification(
+          `Odrzucono zaproszenie do organizacji: ${orgName} (od: ${
+            inv.inviter || inv.email
+          })`,
+          "info"
+        );
+      } else {
+        showNotification("Zaproszenie odrzucone", "info");
+      }
     } catch {}
   };
 
@@ -405,26 +499,48 @@ export default function Dashboard() {
       const postOrgResp = await api.post("/organizations", backendData);
       const newOrgId = postOrgResp.data.data.organization_id;
       console.log("Organization created, ID:", newOrgId);
-      // Spróbuj nadać użytkownikowi rolę właściciela, ale nie przerywaj procesu jeśli się nie uda
+      // Spróbuj nadać użytkownikowi rolę właściciela z kilkoma próbami rozwiązywania ID
+      let ownerAssigned = false;
+      const headers = { "Content-Type": "application/x-www-form-urlencoded" };
+      const roleBody = new URLSearchParams({ role: "owner" }).toString();
+
+      // Try owner assignment WITHOUT user_id first (backend may infer from token)
       try {
-        const roleBody = new URLSearchParams({ role: "owner" }).toString();
-        const uid = await resolveUserId();
-        if (!uid) {
-          console.warn(
-            "Owner assignment skipped: cannot resolve numeric user_id"
-          );
-        } else {
-          await api.post(
-            `/organization_users/?organization_id=${newOrgId}&user_id=${uid}`,
-            roleBody,
-            { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-          );
+        await api.post(
+          `/organization_users/?organization_id=${newOrgId}`,
+          roleBody,
+          { headers }
+        );
+        ownerAssigned = true;
+        console.log("Owner assignment succeeded without explicit user_id");
+      } catch (e) {
+        console.warn("Owner assignment without user_id failed, will retry with user_id", e);
+      }
+
+      // Fallback attempts WITH user_id (needs resolveUserId)
+      for (let attempt = 1; attempt <= 3 && !ownerAssigned; attempt++) {
+        try {
+          const uid = await resolveUserId();
+          if (!uid) {
+            console.warn(`Owner assignment (with user_id) attempt ${attempt}: cannot resolve user id`);
+            await new Promise((r) => setTimeout(r, 120 * attempt));
+            continue;
+          }
+            await api.post(
+              `/organization_users/?organization_id=${newOrgId}&user_id=${uid}`,
+              roleBody,
+              { headers }
+            );
+            ownerAssigned = true;
+            console.log("Owner assignment with user_id succeeded (attempt", attempt, ")");
+        } catch (e2) {
+          console.warn(`Owner assignment (with user_id) attempt ${attempt} failed`, e2);
+          await new Promise((r) => setTimeout(r, 160 * attempt));
         }
-        console.log("User assigned as owner successfully");
-      } catch (roleError) {
-        console.warn("Failed to assign owner role:", roleError);
+      }
+      if (!ownerAssigned) {
         showNotification(
-          "Organizacja utworzona, ale nie udało się nadać roli właściciela.",
+          "Organizacja utworzona, ale nie nadano roli właściciela – odśwież stronę później.",
           "warning"
         );
       }
@@ -440,6 +556,12 @@ export default function Dashboard() {
       if (profileDrawerOpen) {
         await loadProfileData();
       }
+      // Jeżeli przypisano właściciela, przenieś użytkownika bezpośrednio do nowej organizacji
+      if (ownerAssigned) {
+        try {
+          router.push(`/organizations/${newOrgId}`);
+        } catch {}
+      }
     } catch (error: any) {
       console.error("Error creating organization:", error);
       showNotification(
@@ -450,87 +572,155 @@ export default function Dashboard() {
     }
   };
 
-  const handleDeleteOrganization = async (orgId: string) => {
-    if (!window.confirm("Czy na pewno chcesz usunąć tę organizację?")) return;
+  const handleDeleteOrganization = (orgId: string) => {
+    const orgName =
+      userOrganizations.find((o) => o.id === orgId)?.organization_name || "";
+    setConfirmOrg({ open: true, orgId, orgName });
+  };
+
+  const performOrganizationDeletion = async (orgId: string) => {
+    setConfirmOrgLoading(true);
+    let deletionSuccess = false;
+    const cascadeWarnings: string[] = [];
     try {
-      console.log("Dashboard: Deleting organization ID:", orgId);
-
+      // Cascade (best-effort) – swallow individual errors, record warning messages
       try {
-        console.log(
-          "Dashboard: Cascade deleting contents for organization ID:",
-          orgId
-        );
-
-        try {
-          const orgUsersRes = await api.get(`/organization_users/${orgId}`);
-          const membersRaw = Array.isArray(orgUsersRes.data)
-            ? orgUsersRes.data
-            : orgUsersRes.data?.data ?? [];
-          for (const membership of membersRaw) {
-            const uid =
-              membership.user_id ?? membership.userId ?? membership.id;
-            if (uid != null) {
-              await api.delete(`/organization_users/${orgId}/${uid}`);
-            }
-          }
-          console.log("Dashboard: Organization memberships deleted");
-        } catch (e) {
-          console.warn("Dashboard: Error deleting organization memberships", e);
-        }
-
-        const channelsRes = await api.get(
-          "/channels/channels_in_organization",
-          {
-            params: { organization_id: Number(orgId) },
-          }
-        );
-        for (const channel of channelsRes.data) {
-          const topicsRes = await api.get("/topics/topics_in_channel", {
-            params: { channel_id: channel.id },
+        const orgUsersRes = await api
+          .get(`/organization_users/${orgId}`)
+          .catch((e) => {
+            if (e?.response?.status !== 404)
+              cascadeWarnings.push("Członkowie organizacji");
+            return { data: [] } as any;
           });
-          for (const topic of topicsRes.data) {
-            const notesRes = await api.get("/notes/notes_in_topic", {
-              params: { topic_id: topic.id },
-            });
-            for (const note of notesRes.data) {
-              await api.delete(`/notes/${note.id}`);
-            }
-            await api.delete(`/topics/${topic.id}`);
+        const membersRaw = Array.isArray(orgUsersRes.data)
+          ? orgUsersRes.data
+          : orgUsersRes.data?.data ?? [];
+        for (const membership of membersRaw) {
+          const uid = membership.user_id ?? membership.userId ?? membership.id;
+          if (uid != null) {
+            try {
+              await api.delete(`/organization_users/${orgId}/${uid}`);
+            } catch {}
           }
-          await api.delete(`/channels/${channel.id}`);
+        }
+        const channelsRes = await api
+          .get("/channels/channels_in_organization", {
+            params: { organization_id: Number(orgId) },
+          })
+          .catch((e) => {
+            if (e?.response?.status !== 404) cascadeWarnings.push("Kanały");
+            return { data: [] } as any;
+          });
+        const channelList = Array.isArray(channelsRes.data)
+          ? channelsRes.data
+          : channelsRes.data?.data ?? [];
+        for (const channel of channelList) {
+          const topicsRes = await api
+            .get("/topics/topics_in_channel", {
+              params: { channel_id: channel.id },
+            })
+            .catch((e) => {
+              if (e?.response?.status !== 404)
+                cascadeWarnings.push(
+                  `Tematy kanału ${channel.channel_name || channel.id}`
+                );
+              return { data: [] } as any;
+            });
+          const topicList = Array.isArray(topicsRes.data)
+            ? topicsRes.data
+            : topicsRes.data?.data ?? [];
+          for (const topic of topicList) {
+            const notesRes = await api
+              .get("/notes/notes_in_topic", { params: { topic_id: topic.id } })
+              .catch((e) => {
+                if (e?.response?.status !== 404)
+                  cascadeWarnings.push(
+                    `Notatki tematu ${topic.topic_name || topic.id}`
+                  );
+                return { data: [] } as any;
+              });
+            const notesList = Array.isArray(notesRes.data)
+              ? notesRes.data
+              : notesRes.data?.data ?? [];
+            for (const note of notesList) {
+              try {
+                await api.delete(`/notes/${note.id ?? note.note_id}`);
+              } catch {}
+            }
+            try {
+              await api.delete(`/topics/${topic.id ?? topic.topic_id}`);
+            } catch {}
+          }
+          try {
+            await api.delete(`/channels/${channel.id ?? channel.channel_id}`);
+          } catch {}
         }
       } catch (cascadeError) {
-        console.warn(
-          "Dashboard: Cascade deletion encountered errors, proceeding with org delete",
-          cascadeError
-        );
+        console.warn("Cascade deletion major error", cascadeError);
       }
 
-      await api.delete(`/organizations/${orgId}`);
-      showNotification("Organizacja usunięta pomyślnie", "success");
-
+      // Final delete (treat 404 as success – already gone)
+      let deleteError: any | null = null;
       try {
-        await loadOrganizations();
-      } catch (reloadErr) {
-        console.warn(
-          "Dashboard: Error reloading organizations after delete",
-          reloadErr
-        );
+        await api.delete(`/organizations/${orgId}`);
+        deletionSuccess = true;
+      } catch (delErr: any) {
+        if (delErr?.response?.status === 404) {
+          deletionSuccess = true; // already deleted
+        } else {
+          deleteError = delErr; // hold error for verification step
+        }
       }
 
-      if (profileDrawerOpen) {
+      // Verification step: if delete call errored, check whether org still exists
+      if (!deletionSuccess && deleteError) {
         try {
-          await loadProfileData();
-        } catch (profileErr) {
-          console.warn(
-            "Dashboard: Error reloading profile data after delete",
-            profileErr
+          await api.get(`/organizations/${orgId}`); // If succeeds, org still exists -> throw original error
+          // Organization still present => rethrow original error to outer catch
+          throw deleteError;
+        } catch (verifyErr: any) {
+          const status = verifyErr?.response?.status;
+          // If verification 404 -> treat as success (deleted despite delete error)
+          if (status === 404) {
+            deletionSuccess = true;
+            cascadeWarnings.push(
+              "(Usunięto mimo błędnej odpowiedzi serwera przy kasowaniu)"
+            );
+          } else if (verifyErr === deleteError) {
+            // This means GET succeeded; already handled by throw above; keep for clarity
+          } else {
+            // Some other network error during verification: keep original error path
+            throw deleteError;
+          }
+        }
+      }
+
+      if (deletionSuccess) {
+        if (cascadeWarnings.length > 0) {
+          showNotification(
+            `Organizacja usunięta (część elementów pominięto: ${cascadeWarnings.join(
+              ", "
+            )})`,
+            "warning"
           );
+        } else {
+          showNotification("Organizacja usunięta pomyślnie", "success");
+        }
+        try {
+          await loadOrganizations();
+        } catch {}
+        if (profileDrawerOpen) {
+          try {
+            await loadProfileData();
+          } catch {}
         }
       }
     } catch (error: any) {
       console.error("Dashboard: Error deleting organization:", error);
       showNotification("Błąd podczas usuwania organizacji", "error");
+    } finally {
+      setConfirmOrgLoading(false);
+      setConfirmOrg({ open: false, orgId: null, orgName: "" });
     }
   };
 
@@ -819,6 +1009,25 @@ export default function Dashboard() {
       <NotificationSnackbar
         notification={notification}
         onClose={closeNotification}
+      />
+      <ConfirmDialog
+        open={confirmOrg.open}
+        message={`Czy na pewno chcesz usunąć organizację ${
+          confirmOrg.orgName || ""
+        }? Tego nie można cofnąć.`}
+        confirmLabel="Usuń"
+        cancelLabel="Anuluj"
+        severity="danger"
+        loading={confirmOrgLoading}
+        onConfirm={() =>
+          confirmOrg.orgId &&
+          !confirmOrgLoading &&
+          performOrganizationDeletion(confirmOrg.orgId)
+        }
+        onClose={() =>
+          !confirmOrgLoading &&
+          setConfirmOrg({ open: false, orgId: null, orgName: "" })
+        }
       />
     </div>
   );

@@ -5,11 +5,11 @@ import {
   Card,
   CardContent,
   Typography,
-  Button,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
+  Button,
 } from "@mui/material";
 import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 import ThumbDownIcon from "@mui/icons-material/ThumbDown";
@@ -83,29 +83,18 @@ export default function RecentNotesCard() {
   return (
     <Card sx={{ boxShadow: "0 4px 20px rgba(0,0,0,0.1)", borderRadius: 3 }}>
       <CardContent sx={{ p: 3 }}>
-        <Box
+        <Typography
+          variant="h6"
           sx={{
+            fontWeight: 600,
             display: "flex",
-            justifyContent: "space-between",
             alignItems: "center",
+            gap: 1,
             mb: 3,
           }}
         >
-          <Typography
-            variant="h6"
-            sx={{
-              fontWeight: 600,
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-            }}
-          >
-            📝 Najnowsze notatki
-          </Typography>
-          <Button variant="outlined" size="small">
-            Zobacz wszystkie
-          </Button>
-        </Box>
+          📝 Najnowsze notatki
+        </Typography>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {notes.slice(-3).map((note) => (
             <Box
