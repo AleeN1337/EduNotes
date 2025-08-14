@@ -93,7 +93,9 @@ export default function Dashboard() {
       const token = localStorage.getItem("auth_token");
       if (token && token.split(".").length === 3) {
         const payloadRaw = token.split(".")[1];
-        const json = JSON.parse(atob(payloadRaw.replace(/-/g, "+").replace(/_/g, "/")));
+        const json = JSON.parse(
+          atob(payloadRaw.replace(/-/g, "+").replace(/_/g, "/"))
+        );
         const jwtId = Number(json.user_id || json.id || json.sub);
         if (!Number.isNaN(jwtId) && jwtId > 0) return jwtId;
       }
@@ -101,7 +103,7 @@ export default function Dashboard() {
       console.warn("Dashboard: resolveUserId JWT decode failed", e);
     }
 
-  // 3. As a last resort, check /organization_users/me (might contain memberships with user_id)
+    // 3. As a last resort, check /organization_users/me (might contain memberships with user_id)
     try {
       const meRes = await api.get(`/organization_users/me`);
       const arr = Array.isArray(meRes.data?.data) ? meRes.data.data : [];
@@ -514,7 +516,10 @@ export default function Dashboard() {
         ownerAssigned = true;
         console.log("Owner assignment succeeded without explicit user_id");
       } catch (e) {
-        console.warn("Owner assignment without user_id failed, will retry with user_id", e);
+        console.warn(
+          "Owner assignment without user_id failed, will retry with user_id",
+          e
+        );
       }
 
       // Fallback attempts WITH user_id (needs resolveUserId)
@@ -522,19 +527,28 @@ export default function Dashboard() {
         try {
           const uid = await resolveUserId();
           if (!uid) {
-            console.warn(`Owner assignment (with user_id) attempt ${attempt}: cannot resolve user id`);
+            console.warn(
+              `Owner assignment (with user_id) attempt ${attempt}: cannot resolve user id`
+            );
             await new Promise((r) => setTimeout(r, 120 * attempt));
             continue;
           }
-            await api.post(
-              `/organization_users/?organization_id=${newOrgId}&user_id=${uid}`,
-              roleBody,
-              { headers }
-            );
-            ownerAssigned = true;
-            console.log("Owner assignment with user_id succeeded (attempt", attempt, ")");
+          await api.post(
+            `/organization_users/?organization_id=${newOrgId}&user_id=${uid}`,
+            roleBody,
+            { headers }
+          );
+          ownerAssigned = true;
+          console.log(
+            "Owner assignment with user_id succeeded (attempt",
+            attempt,
+            ")"
+          );
         } catch (e2) {
-          console.warn(`Owner assignment (with user_id) attempt ${attempt} failed`, e2);
+          console.warn(
+            `Owner assignment (with user_id) attempt ${attempt} failed`,
+            e2
+          );
           await new Promise((r) => setTimeout(r, 160 * attempt));
         }
       }

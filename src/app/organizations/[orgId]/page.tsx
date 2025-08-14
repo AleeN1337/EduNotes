@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import IconButton from "@mui/material/IconButton";
 import { useRouter, useParams } from "next/navigation";
 import {
   Box,
@@ -12,14 +13,7 @@ import {
   Divider,
   Snackbar,
   Alert,
-  Drawer,
-  IconButton,
-  Badge,
 } from "@mui/material";
-import AssignmentIcon from "@mui/icons-material/Assignment";
-import PeopleIcon from "@mui/icons-material/People";
-import Avatar from "@mui/material/Avatar";
-import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 // Icons are encapsulated in child components now
 import api from "@/lib/api";
@@ -47,6 +41,9 @@ export default function OrganizationPage() {
 
   // State for organization info
   const [organizationName, setOrganizationName] = useState<string>("");
+  const [membershipChecked, setMembershipChecked] = useState(false);
+  const [membershipEnsured, setMembershipEnsured] = useState(false);
+  const [ensuringMembership, setEnsuringMembership] = useState(false);
 
   const [channels, setChannels] = useState<Channel[]>([]);
   const [expandedChannels, setExpandedChannels] = useState<{
@@ -77,19 +74,15 @@ export default function OrganizationPage() {
   const [inviteEmail, setInviteEmail] = useState<string>("");
   const [pendingInvites, setPendingInvites] = useState<Invite[]>([]);
   const [userColors, setUserColors] = useState<Record<string, string>>({});
-  // Organization members & roles
-  const [members, setMembers] = useState<
-    {
-      user_id: string;
-      email?: string;
-      username?: string;
-      role?: string;
-    }[]
-  >([]);
-  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
-  const [loadingMembers, setLoadingMembers] = useState(false);
-  const [manageMembersOpen, setManageMembersOpen] = useState(false);
-  // Toast (snackbar) state
+
+  // Tasks (deadlines) stored in backend
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [addingTask, setAddingTask] = useState(false);
+  const [taskError, setTaskError] = useState<string>("");
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskDate, setNewTaskDate] = useState("");
+  const [newTaskTime, setNewTaskTime] = useState("");
+  // Notification state
   const [toast, setToast] = useState<{
     open: boolean;
     msg: string;
@@ -99,7 +92,6 @@ export default function OrganizationPage() {
     msg: string,
     sev: "success" | "error" | "info" | "warning" = "info"
   ) => setToast({ open: true, msg, sev });
-
   // Confirm dialog state
   const [confirmCfg, setConfirmCfg] = useState<{
     open: boolean;
@@ -107,305 +99,42 @@ export default function OrganizationPage() {
     onConfirm: () => void;
   }>({ open: false, message: "", onConfirm: () => {} });
 
-  // Task management state
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [newTaskDate, setNewTaskDate] = useState("");
-  const [newTaskTime, setNewTaskTime] = useState("");
-  const [addingTask, setAddingTask] = useState(false);
-  const [taskError, setTaskError] = useState("");
-  const [tasksOpen, setTasksOpen] = useState(false);
-  // Access control states
-  const [orgNotFound, setOrgNotFound] = useState(false);
-  const [accessDenied, setAccessDenied] = useState(false);
-  const [redirectScheduled, setRedirectScheduled] = useState(false);
-  const [avatarUploading, setAvatarUploading] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-
-  // Pastel color palette for users (stable ordering)
+  // Define a set of distinct pastel colors for users
   const colorOptions = [
-    "#FFB3BA",
-    "#FFDFBA",
-    "#FFFFBA",
-    "#BAFFC9",
-    "#BAE1FF",
-    "#E3BAFF",
-    "#FFCFE3",
-    "#CFF5FF",
+    "#FFCDD2", // red lighten
+    "#C8E6C9", // green lighten
+    "#BBDEFB", // blue lighten
+    "#FFF9C4", // yellow lighten
+    "#D1C4E9", // purple lighten
+    "#FFE0B2", // orange lighten
+    "#F0F4C3", // lime lighten
+    "#B2EBF2", // cyan lighten
   ];
 
-  // Helper: user initials (prefer email local part if email)
+  // Function to generate user initials
   const getUserInitials = (userId: string) => {
-    const name = userNames[userId] || "";
-    if (!name) return "?";
-    if (name.includes("@")) {
-      const local = name.split("@")[0];
-      return local.substring(0, 2).toUpperCase();
-    }
-    const parts = name.replace(/[@_.]/g, " ").split(" ").filter(Boolean);
-    if (parts.length === 0) return "?";
-    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-    return (parts[0][0] + parts[1][0]).toUpperCase();
+    // For now, use user ID to generate initials
+    // In real app, you'd fetch actual user names
+    const id = parseInt(userId) || 0;
+    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const first = letters[id % 26];
+    const second = letters[(id + 1) % 26];
+    return `${first}${second}`;
   };
 
-  // Load organization name (failsafe fallback to id)
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        const res = await api.get(`/organizations/${orgId}`);
-        const data = res.data?.data ?? res.data;
-        if (active)
-          setOrganizationName(data.organization_name || data.name || "");
-      } catch (e) {
-        const err: any = e;
-        if (err?.response?.status === 404) {
-          if (active) {
-            setOrgNotFound(true);
-            showToast("Organizacja nie istnieje", "error");
-          }
-        } else if (active) {
-          setOrganizationName("");
-        }
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [orgId]);
-
-  // Load members + current user role
-  useEffect(() => {
-    let active = true;
-    setLoadingMembers(true);
-    (async () => {
-      try {
-        const res = await api.get(`/organization_users/${orgId}`);
-        const raw = Array.isArray(res.data) ? res.data : res.data?.data || [];
-        const mapped = (raw as any[]).map((m) => ({
-          user_id: String(m.user_id ?? m.id),
-          email: m.email,
-          username: m.username,
-          role: m.role || m.user_role || m.organization_role,
-        }));
-        if (active) {
-          setMembers(mapped);
-          // Populate userNames map (id -> username/email) for chat initials/email usage
-          setUserNames((prev) => {
-            const next = { ...prev } as Record<string, string>;
-            mapped.forEach((m) => {
-              next[m.user_id] = m.username || m.email || next[m.user_id] || "";
-            });
-            return next;
-          });
-
-          // Enrich members missing both username & email
-          const missing = mapped.filter((m) => !m.username && !m.email);
-          if (missing.length > 0) {
-            (async () => {
-              const updated: typeof mapped = [...mapped];
-              const byId: Record<string, number> = {};
-              updated.forEach((m, idx) => (byId[m.user_id] = idx));
-              // Try individual fetches first
-              for (const m of missing) {
-                try {
-                  const resUser = await api.get(`/users/${m.user_id}`);
-                  const u = resUser.data?.data ?? resUser.data;
-                  const idx = byId[m.user_id];
-                  if (idx != null) {
-                    updated[idx] = {
-                      ...updated[idx],
-                      email: u.email || updated[idx].email,
-                      username: u.username || updated[idx].username,
-                    };
-                  }
-                } catch {
-                  // ignore; will attempt bulk fallback
-                }
-              }
-              // Bulk fallback if some still missing
-              const stillMissing = updated.filter(
-                (m) => !m.email && !m.username
-              );
-              if (stillMissing.length > 0) {
-                try {
-                  const resList = await api.get(`/users/`);
-                  const list = Array.isArray(resList.data?.data)
-                    ? resList.data.data
-                    : Array.isArray(resList.data)
-                    ? resList.data
-                    : [];
-                  stillMissing.forEach((m) => {
-                    const found = list.find(
-                      (u: any) => String(u.user_id || u.id) === m.user_id
-                    );
-                    if (found) {
-                      const idx = byId[m.user_id];
-                      if (idx != null) {
-                        updated[idx] = {
-                          ...updated[idx],
-                          email: found.email || updated[idx].email,
-                          username: found.username || updated[idx].username,
-                        };
-                      }
-                    }
-                  });
-                } catch {}
-              }
-              // Apply enrichment if component still active
-              if (active) {
-                setMembers(updated);
-                setUserNames((prev) => {
-                  const next = { ...prev } as Record<string, string>;
-                  updated.forEach((m) => {
-                    if (!next[m.user_id])
-                      next[m.user_id] = m.username || m.email || "";
-                  });
-                  return next;
-                });
-              }
-            })();
-          }
-        }
-        try {
-          const meRes = await api.get(`/organization_users/me`);
-          const meRaw = Array.isArray(meRes.data)
-            ? meRes.data
-            : meRes.data?.data || [];
-          const orgEntry = (meRaw as any[]).find(
-            (r) => String(r.organization_id) === String(orgId)
-          );
-          if (orgEntry && active) {
-            setCurrentUserRole(
-              orgEntry.role ||
-                orgEntry.user_role ||
-                orgEntry.organization_role ||
-                null
-            );
-          }
-        } catch {}
-      } catch (e) {
-        if (active) {
-          setMembers([]);
-          // If membership endpoint returns 404 treat as org not found (or no access)
-          if ((e as any)?.response?.status === 404) {
-            setOrgNotFound(true);
-            showToast("Organizacja nie istnieje lub brak dostępu", "error");
-          }
-        }
-        console.warn("Failed to load members", e);
-      } finally {
-        if (active) setLoadingMembers(false);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [orgId]);
-
-  // Delete task handler
-  const handleDeleteTask = async (taskId: string) => {
-    try {
-      await api.delete(`/deadlines/${taskId}`);
-      setTasks((prev) => prev.filter((t) => t.id !== taskId));
-      showToast("Zadanie usunięte", "success");
-    } catch (e) {
-      console.error("Error deleting task", e);
-      showToast("Nie udało się usunąć zadania", "error");
-    }
-  };
-
-  // isOwner computed after role load
-  const isOwner = (currentUserRole || "").toLowerCase() === "owner";
-  // Load current user avatar once (from localStorage user if present)
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("user");
-      if (raw) {
-        const u = JSON.parse(raw);
-        if (u?.avatar_url) setAvatarUrl(u.avatar_url);
-      }
-    } catch {}
-  }, []);
-
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !currentUserId) return;
-    setAvatarUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await api.put(`/users/${currentUserId}/avatar`, formData);
-      const data = res.data?.data ?? res.data;
-      const newUrl = data.avatar_url || data.url || data.path || null;
-      if (newUrl) {
-        setAvatarUrl(newUrl);
-        // Update cached user
-        try {
-          const raw = localStorage.getItem("user");
-          if (raw) {
-            const u = JSON.parse(raw);
-            u.avatar_url = newUrl;
-            localStorage.setItem("user", JSON.stringify(u));
-          }
-        } catch {}
-        showToast("Avatar zaktualizowany", "success");
-      } else {
-        showToast("Nie udało się odczytać URL avatara", "warning");
-      }
-    } catch (err: any) {
-      showToast(
-        `Błąd uploadu avatara: ${err.response?.data?.message || err.message}`,
-        "error"
-      );
-    } finally {
-      setAvatarUploading(false);
-      // reset input value
-      e.target.value = "";
-    }
-  };
-  // Evaluate access: user must appear in members OR be owner (role already from membership) unless org not found
-  useEffect(() => {
-    if (orgNotFound) return; // separate state
-    if (loadingMembers) return;
-    if (!currentUserId) return; // wait until user resolves
-    if (members.length === 0) return; // might still load; fallback after load
-    const inOrg = members.some((m) => String(m.user_id) === String(currentUserId));
-    if (!inOrg) {
-      setAccessDenied(true);
-      showToast("Brak dostępu do tej organizacji", "error");
-    }
-  }, [members, currentUserId, loadingMembers, orgNotFound]);
-
-  // Optional redirect after denial / not found
-  useEffect(() => {
-    if ((accessDenied || orgNotFound) && !redirectScheduled) {
-      setRedirectScheduled(true);
-      setTimeout(() => {
-        try { router.push("/dashboard"); } catch {}
-      }, 2500);
-    }
-  }, [accessDenied, orgNotFound, redirectScheduled, router]);
-  // Ensure only one management drawer (members / tasks) at once
-  useEffect(() => {
-    if (tasksOpen && manageMembersOpen) setManageMembersOpen(false);
-  }, [tasksOpen, manageMembersOpen]);
-
-  const handleRemoveMember = (memberId: string) => {
-    if (!isOwner) return;
-    const target = members.find((m) => m.user_id === memberId);
+  // Delete task handler (DELETE /deadlines/{id})
+  const handleDeleteTask = (taskId: string) => {
     setConfirmCfg({
       open: true,
-      message: `Usunąć użytkownika ${
-        target?.username || target?.email || memberId
-      } z organizacji?`,
+      message: "Czy na pewno chcesz usunąć to zadanie?",
       onConfirm: async () => {
         try {
-          await api.delete(`/organization_users/${orgId}/${memberId}`);
-          setMembers((prev) => prev.filter((m) => m.user_id !== memberId));
-          showToast("Użytkownik usunięty", "success");
-        } catch (e) {
-          showToast("Nie udało się usunąć użytkownika", "error");
+          await api.delete(`/deadlines/${taskId}`);
+          setTasks((prev) => prev.filter((t) => t.id !== taskId));
+          showToast("Zadanie usunięte", "success");
+        } catch (err) {
+          console.error("Error deleting deadline:", err);
+          showToast("Nie udało się usunąć zadania", "error");
         } finally {
           setConfirmCfg((c) => ({ ...c, open: false }));
         }
@@ -413,10 +142,28 @@ export default function OrganizationPage() {
     });
   };
 
+  // Load organization info
+  useEffect(() => {
+    if (orgId) {
+      api
+        .get(`/organizations/${orgId}`)
+        .then((res) => {
+          // Unwrap wrapper if present
+          const orgData = res.data.data ?? res.data;
+          setOrganizationName(
+            orgData.organization_name || `Organizacja ${orgId}`
+          );
+        })
+        .catch((error) => {
+          console.error("Error loading organization:", error);
+          setOrganizationName(`Organizacja ${orgId}`);
+        });
+    }
+  }, [orgId]);
+
   // Load channels (subjects) for organization
   useEffect(() => {
-  if (accessDenied || orgNotFound) return;
-  api
+    api
       .get(`/channels/channels_in_organization?organization_id=${orgId}`)
       .then((res) => {
         // Unwrap wrapper if present
@@ -455,6 +202,96 @@ export default function OrganizationPage() {
         }
       });
   }, [orgId]);
+
+  // Ensure current user is member (auto-add as owner if likely creator but missing)
+  useEffect(() => {
+    let canceled = false;
+    (async () => {
+      if (!orgId || membershipEnsured || ensuringMembership) return;
+      try {
+        // Try to get memberships of current user
+        const meRes = await api.get(`/organization_users/me`).catch((e) => {
+          if (e?.response?.status !== 404)
+            console.warn("membership me fetch error", e);
+          return { data: { data: [] } } as any;
+        });
+        const myMemberships = Array.isArray(meRes.data?.data)
+          ? meRes.data.data
+          : [];
+        const hasMembership = myMemberships.some(
+          (m: any) => String(m.organization_id) === String(orgId)
+        );
+        setMembershipChecked(true);
+        if (hasMembership) {
+          if (!canceled) setMembershipEnsured(true);
+          return;
+        }
+
+        // Fetch organization metadata to check if user might be creator (owner id unknown; fallback: attempt join)
+        setEnsuringMembership(true);
+        // Attempt to assign owner role WITHOUT explicit user id first
+        const roleBody = new URLSearchParams({ role: "owner" }).toString();
+        try {
+          await api.post(
+            `/organization_users/?organization_id=${orgId}`,
+            roleBody,
+            { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+          );
+          if (!canceled) setMembershipEnsured(true);
+          return;
+        } catch (e1) {
+          console.warn("Auto owner add without user_id failed", e1);
+        }
+        // Fallback: resolve numeric user id via /organization_users/me again (may appear after delay) or token decode
+        let uid: number | undefined;
+        try {
+          const token = localStorage.getItem("auth_token");
+          if (token && token.split(".").length === 3) {
+            const payloadRaw = token.split(".")[1];
+            const json = JSON.parse(
+              atob(payloadRaw.replace(/-/g, "+").replace(/_/g, "/"))
+            );
+            const candidate = Number(json.user_id || json.id || json.sub);
+            if (!Number.isNaN(candidate) && candidate > 0) uid = candidate;
+          }
+        } catch {}
+        if (!uid) {
+          // try second fetch
+          try {
+            const meRes2 = await api.get(`/organization_users/me`);
+            const arr2 = Array.isArray(meRes2.data?.data)
+              ? meRes2.data.data
+              : [];
+            const match = arr2.find(
+              (m: any) => String(m.organization_id) === String(orgId)
+            );
+            if (match?.user_id) uid = Number(match.user_id);
+          } catch {}
+        }
+        if (uid) {
+          try {
+            await api.post(
+              `/organization_users/?organization_id=${orgId}&user_id=${uid}`,
+              roleBody,
+              {
+                headers: {
+                  "Content-Type": "application/x-www-form-urlencoded",
+                },
+              }
+            );
+            if (!canceled) setMembershipEnsured(true);
+          } catch (e2) {
+            console.warn("Auto owner add with user_id failed", e2);
+          }
+        }
+      } finally {
+        if (!canceled) setEnsuringMembership(false);
+      }
+    })();
+    return () => {
+      canceled = true;
+    };
+  }, [orgId, membershipEnsured, ensuringMembership]);
 
   // Function to load topics for a specific channel
   const loadTopicsForChannel = async (channelId: string) => {
@@ -612,6 +449,7 @@ export default function OrganizationPage() {
   const mapNotesToMessages = (raw: any[]): Message[] =>
     (raw as any[]).map((m: any) => {
       const possibleUrl =
+        m.image_url ||
         m.image ||
         m.file_url ||
         m.file ||
@@ -1272,18 +1110,6 @@ export default function OrganizationPage() {
 
   return (
     <>
-      {(orgNotFound || accessDenied) && (
-        <Box sx={{ height: "100vh", display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, p: 3 }}>
-          <Typography variant="h5" sx={{ fontWeight: 600, textAlign: 'center' }}>
-            {orgNotFound ? 'Ta organizacja nie istnieje.' : 'Brak dostępu do organizacji.'}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
-            Zostaniesz przekierowany na pulpit za chwilę.
-          </Typography>
-          <Button variant="contained" onClick={() => router.push('/dashboard')}>Przejdź do pulpitu</Button>
-        </Box>
-      )}
-      {!orgNotFound && !accessDenied && (
       <Box sx={{ height: "100vh", display: "flex", flexDirection: "column" }}>
         <AppBar
           position="static"
@@ -1318,39 +1144,6 @@ export default function OrganizationPage() {
             >
               {organizationName || `Organizacja ${orgId}`}
             </Typography>
-            {/* Tasks drawer trigger (visible to all) */}
-            <IconButton
-              aria-label="Zadania"
-              onClick={() => setTasksOpen(true)}
-              sx={{ color: "white", mr: isOwner ? 1 : 0, position: 'relative' }}
-            >
-              <Badge
-                badgeContent={tasks.length}
-                color="secondary"
-                overlap="circular"
-                invisible={tasks.length === 0}
-                sx={{
-                  '& .MuiBadge-badge': {
-                    fontSize: '0.65rem',
-                    height: 16,
-                    minWidth: 16,
-                    px: 0.5,
-                  }
-                }}
-              >
-                <AssignmentIcon />
-              </Badge>
-            </IconButton>
-            {/* Members drawer trigger (owner only) */}
-            {isOwner && (
-              <IconButton
-                aria-label="Zarządzaj członkami"
-                onClick={() => setManageMembersOpen(true)}
-                sx={{ color: "white" }}
-              >
-                <PeopleIcon />
-              </IconButton>
-            )}
           </Toolbar>
         </AppBar>
 
@@ -1414,7 +1207,23 @@ export default function OrganizationPage() {
               overflow: "hidden",
             }}
           >
-            {/* Tasks moved to Drawer */}
+            {/* Zadania */}
+            <TasksCard
+              tasks={tasks}
+              onDelete={handleDeleteTask}
+              onOpenAdd={() => setAddingTask(true)}
+              adding={addingTask}
+              onCloseAdd={() => setAddingTask(false)}
+              newTaskTitle={newTaskTitle}
+              newTaskDate={newTaskDate}
+              newTaskTime={newTaskTime}
+              onChangeTitle={setNewTaskTitle}
+              onChangeDate={setNewTaskDate}
+              onChangeTime={setNewTaskTime}
+              onSubmit={() => handleAddTask()}
+              error={taskError}
+            />
+            {/* End Zadania section */}
 
             {/* Main Chat Area */}
             <Box
@@ -1450,161 +1259,7 @@ export default function OrganizationPage() {
             </Box>
           </Box>
         </Box>
-  </Box>
-  )}
-      {/* Drawer for member management */}
-      {/* Drawer for tasks management */}
-      <Drawer
-        anchor="right"
-        open={tasksOpen}
-        onClose={() => setTasksOpen(false)}
-        PaperProps={{
-          sx: {
-            width: 380,
-            p: 2,
-            display: "flex",
-            flexDirection: "column",
-            gap: 2,
-          },
-        }}
-      >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <AssignmentIcon color="primary" />
-          <Typography variant="h6" sx={{ fontWeight: 600, fontSize: 18 }}>
-            Zadania
-          </Typography>
-        </Box>
-        <TasksCard
-          tasks={tasks}
-          onDelete={handleDeleteTask}
-          onOpenAdd={() => setAddingTask(true)}
-          adding={addingTask}
-          onCloseAdd={() => setAddingTask(false)}
-          newTaskTitle={newTaskTitle}
-          newTaskDate={newTaskDate}
-          newTaskTime={newTaskTime}
-          onChangeTitle={setNewTaskTitle}
-          onChangeDate={setNewTaskDate}
-          onChangeTime={setNewTaskTime}
-          onSubmit={() => handleAddTask()}
-          error={taskError}
-        />
-        <Button onClick={() => setTasksOpen(false)} fullWidth>
-          Zamknij
-        </Button>
-      </Drawer>
-      
-      {/* Drawer for member management */}
-      <Drawer
-        anchor="right"
-        open={manageMembersOpen}
-        onClose={() => setManageMembersOpen(false)}
-        PaperProps={{
-          sx: {
-            width: 320,
-            p: 2,
-            display: "flex",
-            flexDirection: "column",
-            gap: 1,
-          },
-        }}
-      >
-        <Typography variant="h6" sx={{ fontSize: 16, fontWeight: 600 }}>
-          Członkowie ({members.length})
-        </Typography>
-        {currentUserId && (
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1.5,
-              my: 1,
-              p: 1,
-              border: '1px dashed #ccc',
-              borderRadius: 1,
-            }}
-          >
-            <Avatar src={avatarUrl || undefined} sx={{ width: 48, height: 48 }}>
-              {!avatarUrl && getUserInitials(currentUserId)}
-            </Avatar>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                Twój avatar
-              </Typography>
-              <Button
-                component="label"
-                variant="outlined"
-                size="small"
-                startIcon={<CloudUploadIcon fontSize="small" />}
-                disabled={avatarUploading}
-              >
-                {avatarUploading ? 'Wysyłanie...' : 'Zmień'}
-                <input
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  onChange={handleAvatarChange}
-                />
-              </Button>
-            </Box>
-          </Box>
-        )}
-        {loadingMembers && (
-          <Typography variant="caption" color="text.secondary">
-            Ładowanie...
-          </Typography>
-        )}
-        <Box sx={{ flex: 1, overflow: "auto", mt: 1 }}>
-          {members.map((m) => (
-            <Box
-              key={m.user_id}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                mb: 1,
-                backgroundColor: "#fafafa",
-                border: "1px solid #e0e0e0",
-                borderRadius: 1,
-                px: 1,
-                py: 0.75,
-              }}
-            >
-              <Box sx={{ minWidth: 0 }}>
-                <Typography variant="body2" noWrap sx={{ fontWeight: 500 }}>
-                  {m.username || m.email || "(brak email)"}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {m.role || "member"}
-                </Typography>
-              </Box>
-              {isOwner && m.user_id !== currentUserId && (
-                <Button
-                  size="small"
-                  color="error"
-                  onClick={() => handleRemoveMember(m.user_id)}
-                  sx={{ textTransform: "none" }}
-                >
-                  Usuń
-                </Button>
-              )}
-            </Box>
-          ))}
-          {!loadingMembers && members.length === 0 && (
-            <Typography variant="caption" color="text.secondary">
-              Brak członków
-            </Typography>
-          )}
-        </Box>
-
-        <Button
-          onClick={() => setManageMembersOpen(false)}
-          fullWidth
-          sx={{ mt: 1 }}
-        >
-          Zamknij
-        </Button>
-      </Drawer>
+      </Box>
       <ConfirmDialog
         open={confirmCfg.open}
         message={confirmCfg.message}
