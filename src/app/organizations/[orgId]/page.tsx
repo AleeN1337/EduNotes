@@ -22,7 +22,9 @@ import { UserOrganization } from "@/lib/profile";
 import { AuthAPI } from "@/lib/authApiWithFallback";
 // Child components
 import Sidebar from "@/components/organization/Sidebar";
-import TasksCard from "@/components/organization/TasksCard";
+// Zadania przeniesione do menu w pasku nawigacji
+import TaskMenu from "@/components/organization/TaskMenu";
+import UserManagementMenu from "@/components/organization/UserManagementMenu";
 import ChatArea from "@/components/organization/ChatArea";
 import {
   Channel,
@@ -74,6 +76,13 @@ export default function OrganizationPage() {
   const [inviteEmail, setInviteEmail] = useState<string>("");
   const [pendingInvites, setPendingInvites] = useState<Invite[]>([]);
   const [userColors, setUserColors] = useState<Record<string, string>>({});
+  // Members state
+  const [members, setMembers] = useState<
+    { user_id: string; email?: string; username?: string; role?: string }[]
+  >([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
+  const [userEmails, setUserEmails] = useState<Record<string, string>>({});
 
   // Tasks (deadlines) stored in backend
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -142,6 +151,42 @@ export default function OrganizationPage() {
     });
   };
 
+  // Initialize email cache and auth user data
+  useEffect(() => {
+    // Wypełnij dane emaili na podstawie localStorage
+    try {
+      // Load email cache
+      const emailCache = loadEmailCache();
+      
+      // Filtruj placeholdery z cache'u (te zaczynające się od '[ID:')
+      const filteredCache: Record<string, string> = {};
+      for (const [id, email] of Object.entries(emailCache)) {
+        if (!email.startsWith('[ID:')) {
+          filteredCache[id] = email;
+        }
+      }
+      
+      if (Object.keys(filteredCache).length > 0) {
+        console.log("[Debug] Preloading filtered cached emails:", filteredCache);
+        setUserEmails(prev => ({...prev, ...filteredCache}));
+      }
+      
+      // Check for authenticated user data
+      const authUserStr = localStorage.getItem("user_data");
+      if (authUserStr) {
+        const authUser = JSON.parse(authUserStr);
+        if (authUser && authUser.id && authUser.email) {
+          // Always ensure the current user's email is in the cache
+          const currentUserEmail = { [authUser.id]: authUser.email };
+          setUserEmails(prev => ({...prev, ...currentUserEmail}));
+          updateEmailCache(currentUserEmail);
+        }
+      }
+    } catch (e) {
+      console.error("Error initializing email cache", e);
+    }
+  }, []);
+
   // Load organization info
   useEffect(() => {
     if (orgId) {
@@ -160,6 +205,444 @@ export default function OrganizationPage() {
         });
     }
   }, [orgId]);
+
+  // Funkcje do zarządzania cache'em emaili w localStorage
+  const EMAIL_CACHE_KEY = "user_email_cache";
+  
+  const loadEmailCache = (): Record<string, string> => {
+    try {
+      const cache = localStorage.getItem(EMAIL_CACHE_KEY);
+      return cache ? JSON.parse(cache) : {};
+    } catch (e) {
+      console.error("Error loading email cache", e);
+      return {};
+    }
+  };
+  
+  const saveEmailCache = (cache: Record<string, string>) => {
+    try {
+      localStorage.setItem(EMAIL_CACHE_KEY, JSON.stringify(cache));
+    } catch (e) {
+      console.error("Error saving email cache", e);
+    }
+  };
+  
+  const updateEmailCache = (newEmails: Record<string, string>) => {
+    const currentCache = loadEmailCache();
+    const updatedCache = { ...currentCache, ...newEmails };
+    saveEmailCache(updatedCache);
+    return updatedCache;
+  };
+
+  // Funkcja pobierająca dane użytkowników łącznie z emailami
+  const fetchUserDetails = async (userIds: string[]) => {
+    if (!userIds.length) return;
+    
+    console.log("[Debug] Fetching user details for IDs:", userIds);
+    setMembersLoading(true);
+    
+    try {
+      // Nie tworzymy już placeholderów tutaj, ponieważ są one już utworzone w loadMembers
+      
+      // Spróbuj strategię 1: Pobierz wszystkich użytkowników jednym zapytaniem
+      let success = false;
+      try {
+        const usersResponse = await api.get('/users/');
+        
+        console.log("[Debug] Raw users response:", usersResponse);
+        
+        // Sprawdź różne możliwe struktury odpowiedzi
+        const allUsers = usersResponse?.data?.data || 
+                         (Array.isArray(usersResponse?.data) ? usersResponse.data : []);
+        
+        console.log("[Debug] Extracted users array:", allUsers);
+        
+        const newEmailsMap: Record<string, string> = {};
+        
+        userIds.forEach(userId => {
+          // Szukaj user_id lub id w danych użytkownika
+          const userDetails = allUsers.find((u: any) => 
+            String(u.user_id) === String(userId) || String(u.id) === String(userId));
+          
+          if (userDetails) {
+            console.log(`[Debug] Found user details for ${userId}:`, userDetails);
+            // Sprawdź różne możliwe lokalizacje emaila
+            if (userDetails.email) {
+              newEmailsMap[userId] = userDetails.email;
+            } else if (userDetails.user_email) {
+              newEmailsMap[userId] = userDetails.user_email;
+            } else if (userDetails.data && userDetails.data.email) {
+              newEmailsMap[userId] = userDetails.data.email;
+            }
+          }
+        });
+        
+        if (Object.keys(newEmailsMap).length > 0) {
+          console.log("[Debug] Found emails for users:", newEmailsMap);
+          setUserEmails(prev => ({...prev, ...newEmailsMap}));
+          updateEmailCache(newEmailsMap);
+          success = true;
+        }
+      } catch (err) {
+        console.log("[Info] Bulk user fetch failed, trying individual fetches:", err);
+      }
+      
+      // Strategia 2: Pobierz użytkowników pojedynczo, tylko jeśli zbiorcze zapytanie się nie powiodło 
+      // lub nie znaleziono wszystkich użytkowników
+      const missingIds = userIds.filter(id => 
+        !userEmails[id] || userEmails[id].startsWith('[ID:')
+      );
+      
+      if (missingIds.length > 0) {
+        console.log("[Debug] Still missing emails for users:", missingIds);
+        
+        // Używamy Promise.allSettled zamiast Promise.all, aby obsłużyć zarówno udane jak i nieudane wywołania
+        const userPromises = missingIds.map(userId => 
+          api.get(`/users/${userId}`)
+            .then(res => {
+              console.log(`[Debug] User ${userId} response:`, res);
+              // Sprawdź różne możliwe struktury odpowiedzi
+              const userData = res.data?.data || res.data;
+              
+              let email = null;
+              if (userData) {
+                if (userData.email) {
+                  email = userData.email;
+                } else if (userData.user_email) {
+                  email = userData.user_email;
+                } else if (userData.data && userData.data.email) {
+                  email = userData.data.email;
+                }
+                
+                // Przeszukaj głębiej obiekt jeśli nie znaleziono emaila
+                if (!email) {
+                  for (const [key, value] of Object.entries(userData)) {
+                    if (typeof value === 'string' && 
+                        key.toLowerCase().includes('email') && 
+                        value.includes('@')) {
+                      email = value;
+                      break;
+                    }
+                  }
+                }
+              }
+              
+              return { id: userId, email };
+            })
+            .catch(err => {
+              console.log(`[Info] Could not fetch user ${userId}:`, err.message);
+              return { id: userId, email: null };
+            })
+        );
+        
+        const userResults = await Promise.allSettled(userPromises);
+        const additionalEmails: Record<string, string> = {};
+        
+        userResults.forEach(result => {
+          if (result.status === 'fulfilled' && result.value.id && result.value.email) {
+            additionalEmails[result.value.id] = result.value.email;
+          }
+        });
+        
+        if (Object.keys(additionalEmails).length > 0) {
+          console.log("[Debug] Found additional emails:", additionalEmails);
+          setUserEmails(prev => ({...prev, ...additionalEmails}));
+          updateEmailCache(additionalEmails);
+        }
+      }
+      
+      // Przed zakończeniem, dodajmy alternatywę dla brakujących emaili:
+      // Spróbuj stworzyć bardziej przyjazne nazwy dla użytkowników bez emaili
+      const stillMissingIds = userIds.filter(id => 
+        !userEmails[id] || userEmails[id].startsWith('[ID:')
+      );
+      
+      if (stillMissingIds.length > 0) {
+        console.log("[Debug] Still missing emails after all attempts:", stillMissingIds);
+        
+        // Użyj username lub innych pól jako fallback
+        const friendlyNames: Record<string, string> = {};
+        
+        for (const id of stillMissingIds) {
+          const member = members.find(m => m.user_id === id);
+          if (member) {
+            if (member.username) {
+              friendlyNames[id] = `@${member.username}`;
+            } else if (member.role) {
+              // Użyj roli do stworzenia bardziej opisowej nazwy
+              friendlyNames[id] = `${member.role === "owner" ? "Właściciel" : "Użytkownik"} #${id}`;
+            } else {
+              // Jako ostateczność, użyj bardziej przyjaznego formatu ID
+              friendlyNames[id] = `Użytkownik #${id}`;
+            }
+          }
+        }
+        
+        if (Object.keys(friendlyNames).length > 0) {
+          console.log("[Debug] Using friendly names as fallback:", friendlyNames);
+          setUserEmails(prev => ({...prev, ...friendlyNames}));
+          // Zapisujemy to do cache, ale ze specjalnym prefiksem aby wiedzieć, że to tylko fallback
+          const fallbackCache: Record<string, string> = {};
+          for (const [id, name] of Object.entries(friendlyNames)) {
+            fallbackCache[id] = name;
+          }
+          updateEmailCache(fallbackCache);
+        }
+      }
+    } catch (error) {
+      console.error("[Error] Error fetching user details:", error);
+    } finally {
+      setMembersLoading(false);
+    }
+  };
+
+  // Load members list
+  const loadMembers = async () => {
+    setMembersLoading(true);
+    
+    // Najpierw spróbujmy załadować dane z cache'a
+    try {
+      const cachedEmails = loadEmailCache();
+      if (Object.keys(cachedEmails).length > 0) {
+        console.log("[Debug] Preloading cached emails in loadMembers:", cachedEmails);
+        setUserEmails(prev => ({...prev, ...cachedEmails}));
+      }
+    } catch (e) {
+      console.error("Error preloading email cache", e);
+    }
+    
+    try {
+      const extractDeepEmail = (
+        obj: any,
+        depth = 0,
+        visited = new Set<any>()
+      ): string | undefined => {
+        if (!obj || typeof obj !== "object" || depth > 10 || visited.has(obj))
+          return undefined;
+        visited.add(obj);
+        
+        // Najpierw sprawdź pola z nazwą zawierającą "email" (case-insensitive)
+        for (const [key, val] of Object.entries(obj)) {
+          if (typeof val === "string" && 
+              key.toLowerCase().includes("email") && 
+              /.+@.+\..+/.test(val)) {
+            console.log(`[Debug] Found email in field "${key}":`, val);
+            return val;
+          }
+        }
+        
+        // Następnie sprawdź wszystkie wartości string
+        for (const val of Object.values(obj)) {
+          if (typeof val === "string" && /.+@.+\..+/.test(val)) {
+            // Sprawdź czy to wygląda jak adres email
+            if (/.+@.+\..+/.test(val)) {
+              console.log(`[Debug] Found email as string value:`, val);
+              return val;
+            }
+          }
+        }
+        
+        // Rekurencyjnie sprawdź zagnieżdżone obiekty
+        for (const val of Object.values(obj)) {
+          if (val && typeof val === "object") {
+            const found = extractDeepEmail(val, depth + 1, visited);
+            if (found) return found;
+          }
+        }
+        
+        return undefined;
+      };
+      const res = await api.get(`/organization_users/${orgId}`).catch((e) => {
+        if (e?.response?.status !== 404)
+          console.warn("Error fetching members", e);
+        return { data: [] } as any;
+      });
+      const raw = Array.isArray(res.data) ? res.data : res.data?.data ?? [];
+      console.log("[Debug] Raw members data full:", JSON.stringify(raw, null, 2));
+      console.log("[Debug] Raw members data:", raw);
+      
+      // Dodajmy jeszcze bardziej szczegółowe logowanie struktury
+      raw.forEach((item: any, index: number) => {
+        console.log(`[Debug] Member ${index}:`, JSON.stringify(item, null, 2));
+      });
+      
+      // Przeanalizujmy zalogowanego użytkownika, aby lepiej zrozumieć strukturę danych
+      const authUser = JSON.parse(localStorage.getItem("user_data") || "{}");
+      console.log("[Debug] Current auth user data:", authUser);
+      console.log("[Debug] Current auth user email:", authUser.email);
+      
+      // Spróbujmy użyć danych uwierzytelnienia do znalezienia emaili
+      const authUserId = String(authUser.id || "");
+      const authUserEmail = String(authUser.email || "");
+      
+      const mapped = (raw as any[]).map((m) => {
+        const user_id = String(m.user_id ?? m.id ?? m.userId ?? "");
+        console.log(`[Debug] Processing member with ID ${user_id}, raw data:`, m);
+        
+        // Sprawdź czy mamy jakieś bezpośrednie źródło emaila w danych
+        const emailCandidate =
+          m.email ||
+          m.user_email ||
+          m.userEmail ||
+          m.email_address ||
+          m.member_email ||
+          m.owner_email ||
+          (m.user && (m.user.email || m.user.user_email)) ||
+          null;
+        
+        // Sprawdźmy każde pole zagnieżdżone, które może zawierać email
+        const findEmailInObject = (obj: any): string | null => {
+          if (!obj || typeof obj !== 'object') return null;
+          
+          // Sprawdź bezpośrednie pola
+          for (const [key, value] of Object.entries(obj)) {
+            if (
+              typeof value === 'string' && 
+              key.toLowerCase().includes('email') && 
+              value.includes('@')
+            ) {
+              console.log(`[Debug] Found email in field ${key}:`, value);
+              return value;
+            }
+          }
+          
+          // Sprawdź pola user, profile, etc.
+          for (const field of ['user', 'profile', 'member', 'owner']) {
+            if (obj[field] && typeof obj[field] === 'object') {
+              for (const [key, value] of Object.entries(obj[field])) {
+                if (
+                  typeof value === 'string' && 
+                  key.toLowerCase().includes('email') && 
+                  value.includes('@')
+                ) {
+                  console.log(`[Debug] Found email in ${field}.${key}:`, value);
+                  return value;
+                }
+              }
+            }
+          }
+          
+          // Ostatnia szansa - wszystkie stringi z @
+          for (const value of Object.values(obj)) {
+            if (typeof value === 'string' && value.includes('@') && value.includes('.')) {
+              console.log(`[Debug] Found potential email in value:`, value);
+              return value;
+            }
+          }
+          
+          return null;
+        };
+        
+        const deepEmailSearch = findEmailInObject(m);
+        const emailFinal = emailCandidate || deepEmailSearch || undefined;
+        
+        // Jeśli znaleźliśmy email, zaktualizujmy cache
+        if (emailFinal) {
+          const newEmails: Record<string, string> = {};
+          newEmails[user_id] = emailFinal;
+          setUserEmails(prev => ({...prev, ...newEmails}));
+          updateEmailCache(newEmails);
+        }
+        
+        const usernameCandidate =
+          m.username || 
+          m.user_name || 
+          (m.user && m.user.username) || 
+          m.first_name || 
+          m.firstName || 
+          (m.name ? String(m.name) : undefined);
+        
+        return {
+          user_id,
+          email: emailFinal,
+          username: usernameCandidate ? String(usernameCandidate) : undefined,
+          role: m.role || m.user_role || m.membership_role || m.type,
+        };
+      });
+      console.log("[Debug] Mapped members:", mapped);
+      setMembers(mapped);
+
+      // Create placeholder loading states for any members without emails
+      const loadingPlaceholders: Record<string, string> = {};
+      const userIds = mapped.map(m => m.user_id);
+      
+      userIds.forEach(id => {
+        // Only create placeholders for IDs that don't have emails in the current state
+        // and don't already have placeholders
+        if (!userEmails[id] || (userEmails[id].startsWith('[ID:') && !mapped.find(m => m.user_id === id && m.email))) {
+          loadingPlaceholders[id] = `[ID: ${id}]`;
+        }
+      });
+      
+      if (Object.keys(loadingPlaceholders).length > 0) {
+        setUserEmails(prev => ({...prev, ...loadingPlaceholders}));
+      }
+      
+      // Fetch user details using our improved function
+      fetchUserDetails(userIds);
+      
+      // Determine if current user is owner
+      const token = localStorage.getItem("auth_token");
+      let currentId: string | undefined;
+      try {
+        if (token && token.split(".").length === 3) {
+          const payload = JSON.parse(
+            atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))
+          );
+          const cid = payload.user_id || payload.id || payload.sub;
+          if (cid) currentId = String(cid);
+        }
+      } catch {}
+      if (!currentId) {
+        try {
+          const meRes = await api.get(`/organization_users/me`);
+          const arr = Array.isArray(meRes.data?.data) ? meRes.data.data : [];
+          const membership = arr.find(
+            (m: any) => String(m.organization_id) === String(orgId)
+          );
+          if (membership?.user_id) currentId = String(membership.user_id);
+        } catch {}
+      }
+      if (currentId) {
+        setIsOwner(
+          mapped.some(
+            (m) =>
+              m.user_id === currentId &&
+              (m.role || "").toLowerCase() === "owner"
+          )
+        );
+      } else {
+        setIsOwner(false);
+      }
+    } finally {
+      setMembersLoading(false);
+    }
+  };
+  useEffect(() => {
+    loadMembers();
+  }, [orgId]);
+
+  const handleRemoveMember = (uid: string) => {
+    // Owner check
+    if (!isOwner) return;
+    if (!uid) return;
+    setConfirmCfg({
+      open: true,
+      message: "Czy na pewno chcesz usunąć użytkownika z organizacji?",
+      onConfirm: async () => {
+        try {
+          await api.delete(`/organization_users/${orgId}/${uid}`);
+          setMembers((prev) => prev.filter((m) => m.user_id !== uid));
+          showToast("Użytkownik usunięty", "success");
+        } catch (e) {
+          console.error("Error removing member", e);
+          showToast("Nie udało się usunąć użytkownika", "error");
+        } finally {
+          setConfirmCfg((c) => ({ ...c, open: false }));
+        }
+      },
+    });
+  };
 
   // Load channels (subjects) for organization
   useEffect(() => {
@@ -1144,6 +1627,30 @@ export default function OrganizationPage() {
             >
               {organizationName || `Organizacja ${orgId}`}
             </Typography>
+            <TaskMenu
+              tasks={tasks}
+              onDelete={handleDeleteTask}
+              adding={addingTask}
+              onOpenAdd={() => setAddingTask(true)}
+              onCloseAdd={() => setAddingTask(false)}
+              newTaskTitle={newTaskTitle}
+              newTaskDate={newTaskDate}
+              newTaskTime={newTaskTime}
+              onChangeTitle={setNewTaskTitle}
+              onChangeDate={setNewTaskDate}
+              onChangeTime={setNewTaskTime}
+              onSubmit={() => handleAddTask()}
+              error={taskError}
+            />
+            <UserManagementMenu
+              members={members}
+              currentUserId={currentUserId}
+              isOwner={isOwner}
+              onRemoveMember={handleRemoveMember}
+              onRefreshMembers={loadMembers}
+              loading={membersLoading}
+              userEmails={userEmails}
+            />
           </Toolbar>
         </AppBar>
 
@@ -1207,23 +1714,7 @@ export default function OrganizationPage() {
               overflow: "hidden",
             }}
           >
-            {/* Zadania */}
-            <TasksCard
-              tasks={tasks}
-              onDelete={handleDeleteTask}
-              onOpenAdd={() => setAddingTask(true)}
-              adding={addingTask}
-              onCloseAdd={() => setAddingTask(false)}
-              newTaskTitle={newTaskTitle}
-              newTaskDate={newTaskDate}
-              newTaskTime={newTaskTime}
-              onChangeTitle={setNewTaskTitle}
-              onChangeDate={setNewTaskDate}
-              onChangeTime={setNewTaskTime}
-              onSubmit={() => handleAddTask()}
-              error={taskError}
-            />
-            {/* End Zadania section */}
+            {/* Zadania przeniesione do TaskMenu w AppBar */}
 
             {/* Main Chat Area */}
             <Box
