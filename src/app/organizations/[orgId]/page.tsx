@@ -60,6 +60,10 @@ export default function OrganizationPage() {
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+  const [userOrgIds, setUserOrgIds] = useState<Set<string>>(new Set());
+  const [membershipLoading, setMembershipLoading] = useState(true);
+  const [orgOwnerId, setOrgOwnerId] = useState<string | null>(null);
   const [currentUserName, setCurrentUserName] = useState<string>("");
   const [userNames, setUserNames] = useState<Record<string, string>>({});
   const [newChannelName, setNewChannelName] = useState("");
@@ -163,6 +167,11 @@ export default function OrganizationPage() {
           setOrganizationName(
             orgData.organization_name || `Organizacja ${orgId}`
           );
+          if (orgData.owner_id || orgData.user_id) {
+            try {
+              setOrgOwnerId(String(orgData.owner_id || orgData.user_id));
+            } catch {}
+          }
           setOrgExists(true);
         })
         .catch((error) => {
@@ -367,6 +376,30 @@ export default function OrganizationPage() {
   useEffect(() => {
     loadMembers();
   }, [orgId]);
+
+  // Fetch user's organization memberships (separate from members list to confirm access)
+  useEffect(() => {
+    if (!orgId) return;
+    let active = true;
+    (async () => {
+      setMembershipLoading(true);
+      try {
+        const meRes = await api.get(`/organization_users/me`).catch((e) => {
+          if (e?.response?.status !== 404)
+            console.warn("/organization_users/me error", e);
+          return { data: { data: [] } } as any;
+        });
+        const arr = Array.isArray(meRes.data?.data) ? meRes.data.data : [];
+        const ids = arr.map((m: any) => String(m.organization_id));
+        if (active) setUserOrgIds(new Set(ids));
+      } finally {
+        if (active) setMembershipLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [orgId, currentUserId]);
 
   const handleRemoveMember = (uid: string) => {
     // Owner check
@@ -996,6 +1029,7 @@ export default function OrganizationPage() {
         const user = await AuthAPI.getCurrentUser();
         if (!active) return;
         if (user && user.id) {
+          setCurrentUserEmail(user.email || null);
           setCurrentUserId(String(user.id));
           setCurrentUserName(
             (user as any).name || user.username || user.email || ""
@@ -1014,6 +1048,7 @@ export default function OrganizationPage() {
         if (userJson) {
           const u = JSON.parse(userJson);
           if (u?.id) {
+            setCurrentUserEmail(u.email || null);
             setCurrentUserId(String(u.id));
             setCurrentUserName(u.name || u.username || u.email || "");
           } else {
@@ -1271,12 +1306,43 @@ export default function OrganizationPage() {
       </Box>
     );
   }
-  if (
-    orgExists &&
-    !membersLoading &&
-    currentUserId &&
-    !members.some((m) => m.user_id === currentUserId)
-  ) {
+  const invitedAccessAllowed =
+    currentUserEmail &&
+    pendingInvites.some((inv) => inv.email === currentUserEmail);
+  const membershipViaMembers =
+    currentUserId && members.some((m) => m.user_id === currentUserId);
+  const membershipViaMeEndpoint = userOrgIds.has(String(orgId));
+  const ownershipFallback =
+    currentUserId && orgOwnerId && currentUserId === orgOwnerId;
+  const hasAccess = !!(
+    membershipViaMembers ||
+    membershipViaMeEndpoint ||
+    ownershipFallback ||
+    invitedAccessAllowed
+  );
+
+  // Show loading placeholder until we can evaluate access (avoid leaking data prematurely)
+  if (orgExists && (membersLoading || membershipLoading || !currentUserId)) {
+    return (
+      <Box
+        sx={{
+          height: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "column",
+          gap: 2,
+        }}
+      >
+        <CircularProgress />
+        <Typography variant="body1" color="text.secondary">
+          Ładowanie organizacji...
+        </Typography>
+      </Box>
+    );
+  }
+
+  if (orgExists && !hasAccess) {
     return (
       <Box
         sx={{
