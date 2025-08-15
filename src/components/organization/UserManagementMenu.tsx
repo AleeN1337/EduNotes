@@ -342,14 +342,15 @@ export default function UserManagementMenu({
           );
         })}
 
-        {!isOwner && members.length > 0 && [
-          <Divider key="owner-warning-divider" />,
-          <Box key="owner-warning-box" sx={{ px: 2, py: 1 }}>
-            <Typography variant="caption" color="text.secondary">
-              Tylko właściciel może zarządzać członkami organizacji
-            </Typography>
-          </Box>
-        ]}
+        {!isOwner &&
+          members.length > 0 && [
+            <Divider key="owner-warning-divider" />,
+            <Box key="owner-warning-box" sx={{ px: 2, py: 1 }}>
+              <Typography variant="caption" color="text.secondary">
+                Tylko właściciel może zarządzać członkami organizacji
+              </Typography>
+            </Box>,
+          ]}
       </Menu>
     </>
   );

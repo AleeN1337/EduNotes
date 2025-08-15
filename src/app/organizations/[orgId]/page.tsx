@@ -13,6 +13,7 @@ import {
   Divider,
   Snackbar,
   Alert,
+  CircularProgress,
 } from "@mui/material";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 // Icons are encapsulated in child components now
@@ -43,6 +44,7 @@ export default function OrganizationPage() {
 
   // State for organization info
   const [organizationName, setOrganizationName] = useState<string>("");
+  const [orgExists, setOrgExists] = useState<boolean | null>(null);
   const [membershipChecked, setMembershipChecked] = useState(false);
   const [membershipEnsured, setMembershipEnsured] = useState(false);
   const [ensuringMembership, setEnsuringMembership] = useState(false);
@@ -161,10 +163,12 @@ export default function OrganizationPage() {
           setOrganizationName(
             orgData.organization_name || `Organizacja ${orgId}`
           );
+          setOrgExists(true);
         })
         .catch((error) => {
           console.error("Error loading organization:", error);
           setOrganizationName(`Organizacja ${orgId}`);
+          if (error.response?.status === 404) setOrgExists(false);
         });
     }
   }, [orgId]);
@@ -290,10 +294,9 @@ export default function OrganizationPage() {
             stillMissing.map(async (m) => {
               let uRes;
               try {
-                uRes = await api.get(
-                  `/users/${m.user_id}`,
-                  { validateStatus: () => true }
-                );
+                uRes = await api.get(`/users/${m.user_id}`, {
+                  validateStatus: () => true,
+                });
               } catch (e) {
                 console.warn(`Network error fetching user ${m.user_id}`, e);
                 return;
@@ -429,95 +432,7 @@ export default function OrganizationPage() {
       });
   }, [orgId]);
 
-  // Ensure current user is member (auto-add as owner if likely creator but missing)
-  useEffect(() => {
-    let canceled = false;
-    (async () => {
-      if (!orgId || membershipEnsured || ensuringMembership) return;
-      try {
-        // Try to get memberships of current user
-        const meRes = await api.get(`/organization_users/me`).catch((e) => {
-          if (e?.response?.status !== 404)
-            console.warn("membership me fetch error", e);
-          return { data: { data: [] } } as any;
-        });
-        const myMemberships = Array.isArray(meRes.data?.data)
-          ? meRes.data.data
-          : [];
-        const hasMembership = myMemberships.some(
-          (m: any) => String(m.organization_id) === String(orgId)
-        );
-        setMembershipChecked(true);
-        if (hasMembership) {
-          if (!canceled) setMembershipEnsured(true);
-          return;
-        }
-
-        // Fetch organization metadata to check if user might be creator (owner id unknown; fallback: attempt join)
-        setEnsuringMembership(true);
-        // Attempt to assign owner role WITHOUT explicit user id first
-        const roleBody = new URLSearchParams({ role: "owner" }).toString();
-        try {
-          await api.post(
-            `/organization_users/?organization_id=${orgId}`,
-            roleBody,
-            { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-          );
-          if (!canceled) setMembershipEnsured(true);
-          return;
-        } catch (e1) {
-          console.warn("Auto owner add without user_id failed", e1);
-        }
-        // Fallback: resolve numeric user id via /organization_users/me again (may appear after delay) or token decode
-        let uid: number | undefined;
-        try {
-          const token = localStorage.getItem("auth_token");
-          if (token && token.split(".").length === 3) {
-            const payloadRaw = token.split(".")[1];
-            const json = JSON.parse(
-              atob(payloadRaw.replace(/-/g, "+").replace(/_/g, "/"))
-            );
-            const candidate = Number(json.user_id || json.id || json.sub);
-            if (!Number.isNaN(candidate) && candidate > 0) uid = candidate;
-          }
-        } catch {}
-        if (!uid) {
-          // try second fetch
-          try {
-            const meRes2 = await api.get(`/organization_users/me`);
-            const arr2 = Array.isArray(meRes2.data?.data)
-              ? meRes2.data.data
-              : [];
-            const match = arr2.find(
-              (m: any) => String(m.organization_id) === String(orgId)
-            );
-            if (match?.user_id) uid = Number(match.user_id);
-          } catch {}
-        }
-        if (uid) {
-          try {
-            await api.post(
-              `/organization_users/?organization_id=${orgId}&user_id=${uid}`,
-              roleBody,
-              {
-                headers: {
-                  "Content-Type": "application/x-www-form-urlencoded",
-                },
-              }
-            );
-            if (!canceled) setMembershipEnsured(true);
-          } catch (e2) {
-            console.warn("Auto owner add with user_id failed", e2);
-          }
-        }
-      } finally {
-        if (!canceled) setEnsuringMembership(false);
-      }
-    })();
-    return () => {
-      canceled = true;
-    };
-  }, [orgId, membershipEnsured, ensuringMembership]);
+  // Remove auto-add membership logic: users must be invited to join organizations
 
   // Function to load topics for a specific channel
   const loadTopicsForChannel = async (channelId: string) => {
@@ -1334,6 +1249,55 @@ export default function OrganizationPage() {
     }
   };
 
+  // Block view if org doesn't exist or user not member
+  if (orgExists === false) {
+    return (
+      <Box
+        sx={{
+          height: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 2,
+        }}
+      >
+        <Typography variant="h5" color="error">
+          Organizacja nie istnieje.
+        </Typography>
+        <Button variant="contained" onClick={() => router.push("/dashboard")}>
+          Powrót do dashboardu
+        </Button>
+      </Box>
+    );
+  }
+  if (
+    orgExists &&
+    !membersLoading &&
+    currentUserId &&
+    !members.some((m) => m.user_id === currentUserId)
+  ) {
+    return (
+      <Box
+        sx={{
+          height: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 2,
+        }}
+      >
+        <Typography variant="h5" color="text.secondary">
+          Nie masz dostępu do tej organizacji.
+        </Typography>
+        <Button variant="contained" onClick={() => router.push("/dashboard")}>
+          Powrót do dashboardu
+        </Button>
+      </Box>
+    );
+  }
+
   return (
     <>
       <Box sx={{ height: "100vh", display: "flex", flexDirection: "column" }}>
@@ -1346,7 +1310,7 @@ export default function OrganizationPage() {
         >
           <Toolbar sx={{ minHeight: { xs: 56, sm: 64 } }}>
             <Button
-              onClick={() => router.back()}
+              onClick={() => router.push("/dashboard")}
               sx={{
                 mr: 2,
                 color: "white",
