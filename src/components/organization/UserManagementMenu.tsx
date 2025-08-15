@@ -82,12 +82,16 @@ export default function UserManagementMenu({
     if (member.username) {
       return `@${member.username}`;
     }
-    // Następnie email z cache lub member.email
-    if (userEmails[member.user_id] && !userEmails[member.user_id].startsWith("[ID:")) {
-      return userEmails[member.user_id];
-    }
+    // Następnie rzeczywisty email z member.email jeśli dostępny
     if (member.email) {
       return member.email;
+    }
+    // Następnie email z cache jeśli jest i nie jest placeholderem
+    if (
+      userEmails[member.user_id] &&
+      !userEmails[member.user_id].startsWith("[ID:")
+    ) {
+      return userEmails[member.user_id];
     }
 
     // Placeholder lub fallback
@@ -120,7 +124,10 @@ export default function UserManagementMenu({
       return member.username.toLowerCase();
     }
     // Następnie email jeśli dostępny
-    if (userEmails[member.user_id] && !userEmails[member.user_id].startsWith("[ID:")) {
+    if (
+      userEmails[member.user_id] &&
+      !userEmails[member.user_id].startsWith("[ID:")
+    ) {
       return userEmails[member.user_id].toLowerCase();
     }
     if (member.email) {
@@ -335,16 +342,14 @@ export default function UserManagementMenu({
           );
         })}
 
-        {!isOwner && members.length > 0 && (
-          <>
-            <Divider />
-            <Box sx={{ px: 2, py: 1 }}>
-              <Typography variant="caption" color="text.secondary">
-                Tylko właściciel może zarządzać członkami organizacji
-              </Typography>
-            </Box>
-          </>
-        )}
+        {!isOwner && members.length > 0 && [
+          <Divider key="owner-warning-divider" />,
+          <Box key="owner-warning-box" sx={{ px: 2, py: 1 }}>
+            <Typography variant="caption" color="text.secondary">
+              Tylko właściciel może zarządzać członkami organizacji
+            </Typography>
+          </Box>
+        ]}
       </Menu>
     </>
   );

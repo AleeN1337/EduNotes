@@ -82,7 +82,6 @@ export default function OrganizationPage() {
   >([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
-  const [userEmails, setUserEmails] = useState<Record<string, string>>({});
 
   // Tasks (deadlines) stored in backend
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -151,42 +150,6 @@ export default function OrganizationPage() {
     });
   };
 
-  // Initialize email cache and auth user data
-  useEffect(() => {
-    // Wypełnij dane emaili na podstawie localStorage
-    try {
-      // Load email cache
-      const emailCache = loadEmailCache();
-      
-      // Filtruj placeholdery z cache'u (te zaczynające się od '[ID:')
-      const filteredCache: Record<string, string> = {};
-      for (const [id, email] of Object.entries(emailCache)) {
-        if (!email.startsWith('[ID:')) {
-          filteredCache[id] = email;
-        }
-      }
-      
-      if (Object.keys(filteredCache).length > 0) {
-        console.log("[Debug] Preloading filtered cached emails:", filteredCache);
-        setUserEmails(prev => ({...prev, ...filteredCache}));
-      }
-      
-      // Check for authenticated user data
-      const authUserStr = localStorage.getItem("user_data");
-      if (authUserStr) {
-        const authUser = JSON.parse(authUserStr);
-        if (authUser && authUser.id && authUser.email) {
-          // Always ensure the current user's email is in the cache
-          const currentUserEmail = { [authUser.id]: authUser.email };
-          setUserEmails(prev => ({...prev, ...currentUserEmail}));
-          updateEmailCache(currentUserEmail);
-        }
-      }
-    } catch (e) {
-      console.error("Error initializing email cache", e);
-    }
-  }, []);
-
   // Load organization info
   useEffect(() => {
     if (orgId) {
@@ -206,250 +169,27 @@ export default function OrganizationPage() {
     }
   }, [orgId]);
 
-  // Funkcje do zarządzania cache'em emaili w localStorage
-  const EMAIL_CACHE_KEY = "user_email_cache";
-  
-  const loadEmailCache = (): Record<string, string> => {
-    try {
-      const cache = localStorage.getItem(EMAIL_CACHE_KEY);
-      return cache ? JSON.parse(cache) : {};
-    } catch (e) {
-      console.error("Error loading email cache", e);
-      return {};
-    }
-  };
-  
-  const saveEmailCache = (cache: Record<string, string>) => {
-    try {
-      localStorage.setItem(EMAIL_CACHE_KEY, JSON.stringify(cache));
-    } catch (e) {
-      console.error("Error saving email cache", e);
-    }
-  };
-  
-  const updateEmailCache = (newEmails: Record<string, string>) => {
-    const currentCache = loadEmailCache();
-    const updatedCache = { ...currentCache, ...newEmails };
-    saveEmailCache(updatedCache);
-    return updatedCache;
-  };
-
-  // Funkcja pobierająca dane użytkowników łącznie z emailami
-  const fetchUserDetails = async (userIds: string[]) => {
-    if (!userIds.length) return;
-    
-    console.log("[Debug] Fetching user details for IDs:", userIds);
-    setMembersLoading(true);
-    
-    try {
-      // Nie tworzymy już placeholderów tutaj, ponieważ są one już utworzone w loadMembers
-      
-      // Spróbuj strategię 1: Pobierz wszystkich użytkowników jednym zapytaniem
-      let success = false;
-      try {
-        const usersResponse = await api.get('/users/');
-        
-        console.log("[Debug] Raw users response:", usersResponse);
-        
-        // Sprawdź różne możliwe struktury odpowiedzi
-        const allUsers = usersResponse?.data?.data || 
-                         (Array.isArray(usersResponse?.data) ? usersResponse.data : []);
-        
-        console.log("[Debug] Extracted users array:", allUsers);
-        
-        const newEmailsMap: Record<string, string> = {};
-        
-        userIds.forEach(userId => {
-          // Szukaj user_id lub id w danych użytkownika
-          const userDetails = allUsers.find((u: any) => 
-            String(u.user_id) === String(userId) || String(u.id) === String(userId));
-          
-          if (userDetails) {
-            console.log(`[Debug] Found user details for ${userId}:`, userDetails);
-            // Sprawdź różne możliwe lokalizacje emaila
-            if (userDetails.email) {
-              newEmailsMap[userId] = userDetails.email;
-            } else if (userDetails.user_email) {
-              newEmailsMap[userId] = userDetails.user_email;
-            } else if (userDetails.data && userDetails.data.email) {
-              newEmailsMap[userId] = userDetails.data.email;
-            }
-          }
-        });
-        
-        if (Object.keys(newEmailsMap).length > 0) {
-          console.log("[Debug] Found emails for users:", newEmailsMap);
-          setUserEmails(prev => ({...prev, ...newEmailsMap}));
-          updateEmailCache(newEmailsMap);
-          success = true;
-        }
-      } catch (err) {
-        console.log("[Info] Bulk user fetch failed, trying individual fetches:", err);
-      }
-      
-      // Strategia 2: Pobierz użytkowników pojedynczo, tylko jeśli zbiorcze zapytanie się nie powiodło 
-      // lub nie znaleziono wszystkich użytkowników
-      const missingIds = userIds.filter(id => 
-        !userEmails[id] || userEmails[id].startsWith('[ID:')
-      );
-      
-      if (missingIds.length > 0) {
-        console.log("[Debug] Still missing emails for users:", missingIds);
-        
-        // Używamy Promise.allSettled zamiast Promise.all, aby obsłużyć zarówno udane jak i nieudane wywołania
-        const userPromises = missingIds.map(userId => 
-          api.get(`/users/${userId}`)
-            .then(res => {
-              console.log(`[Debug] User ${userId} response:`, res);
-              // Sprawdź różne możliwe struktury odpowiedzi
-              const userData = res.data?.data || res.data;
-              
-              let email = null;
-              if (userData) {
-                if (userData.email) {
-                  email = userData.email;
-                } else if (userData.user_email) {
-                  email = userData.user_email;
-                } else if (userData.data && userData.data.email) {
-                  email = userData.data.email;
-                }
-                
-                // Przeszukaj głębiej obiekt jeśli nie znaleziono emaila
-                if (!email) {
-                  for (const [key, value] of Object.entries(userData)) {
-                    if (typeof value === 'string' && 
-                        key.toLowerCase().includes('email') && 
-                        value.includes('@')) {
-                      email = value;
-                      break;
-                    }
-                  }
-                }
-              }
-              
-              return { id: userId, email };
-            })
-            .catch(err => {
-              console.log(`[Info] Could not fetch user ${userId}:`, err.message);
-              return { id: userId, email: null };
-            })
-        );
-        
-        const userResults = await Promise.allSettled(userPromises);
-        const additionalEmails: Record<string, string> = {};
-        
-        userResults.forEach(result => {
-          if (result.status === 'fulfilled' && result.value.id && result.value.email) {
-            additionalEmails[result.value.id] = result.value.email;
-          }
-        });
-        
-        if (Object.keys(additionalEmails).length > 0) {
-          console.log("[Debug] Found additional emails:", additionalEmails);
-          setUserEmails(prev => ({...prev, ...additionalEmails}));
-          updateEmailCache(additionalEmails);
-        }
-      }
-      
-      // Przed zakończeniem, dodajmy alternatywę dla brakujących emaili:
-      // Spróbuj stworzyć bardziej przyjazne nazwy dla użytkowników bez emaili
-      const stillMissingIds = userIds.filter(id => 
-        !userEmails[id] || userEmails[id].startsWith('[ID:')
-      );
-      
-      if (stillMissingIds.length > 0) {
-        console.log("[Debug] Still missing emails after all attempts:", stillMissingIds);
-        
-        // Użyj username lub innych pól jako fallback
-        const friendlyNames: Record<string, string> = {};
-        
-        for (const id of stillMissingIds) {
-          const member = members.find(m => m.user_id === id);
-          if (member) {
-            if (member.username) {
-              friendlyNames[id] = `@${member.username}`;
-            } else if (member.role) {
-              // Użyj roli do stworzenia bardziej opisowej nazwy
-              friendlyNames[id] = `${member.role === "owner" ? "Właściciel" : "Użytkownik"} #${id}`;
-            } else {
-              // Jako ostateczność, użyj bardziej przyjaznego formatu ID
-              friendlyNames[id] = `Użytkownik #${id}`;
-            }
-          }
-        }
-        
-        if (Object.keys(friendlyNames).length > 0) {
-          console.log("[Debug] Using friendly names as fallback:", friendlyNames);
-          setUserEmails(prev => ({...prev, ...friendlyNames}));
-          // Zapisujemy to do cache, ale ze specjalnym prefiksem aby wiedzieć, że to tylko fallback
-          const fallbackCache: Record<string, string> = {};
-          for (const [id, name] of Object.entries(friendlyNames)) {
-            fallbackCache[id] = name;
-          }
-          updateEmailCache(fallbackCache);
-        }
-      }
-    } catch (error) {
-      console.error("[Error] Error fetching user details:", error);
-    } finally {
-      setMembersLoading(false);
-    }
-  };
-
   // Load members list
   const loadMembers = async () => {
     setMembersLoading(true);
-    
-    // Najpierw spróbujmy załadować dane z cache'a
-    try {
-      const cachedEmails = loadEmailCache();
-      if (Object.keys(cachedEmails).length > 0) {
-        console.log("[Debug] Preloading cached emails in loadMembers:", cachedEmails);
-        setUserEmails(prev => ({...prev, ...cachedEmails}));
-      }
-    } catch (e) {
-      console.error("Error preloading email cache", e);
-    }
-    
     try {
       const extractDeepEmail = (
         obj: any,
         depth = 0,
         visited = new Set<any>()
       ): string | undefined => {
-        if (!obj || typeof obj !== "object" || depth > 10 || visited.has(obj))
+        if (!obj || typeof obj !== "object" || depth > 5 || visited.has(obj))
           return undefined;
         visited.add(obj);
-        
-        // Najpierw sprawdź pola z nazwą zawierającą "email" (case-insensitive)
-        for (const [key, val] of Object.entries(obj)) {
-          if (typeof val === "string" && 
-              key.toLowerCase().includes("email") && 
-              /.+@.+\..+/.test(val)) {
-            console.log(`[Debug] Found email in field "${key}":`, val);
-            return val;
-          }
-        }
-        
-        // Następnie sprawdź wszystkie wartości string
         for (const val of Object.values(obj)) {
-          if (typeof val === "string" && /.+@.+\..+/.test(val)) {
-            // Sprawdź czy to wygląda jak adres email
-            if (/.+@.+\..+/.test(val)) {
-              console.log(`[Debug] Found email as string value:`, val);
-              return val;
-            }
-          }
+          if (typeof val === "string" && /.+@.+\..+/.test(val)) return val;
         }
-        
-        // Rekurencyjnie sprawdź zagnieżdżone obiekty
         for (const val of Object.values(obj)) {
           if (val && typeof val === "object") {
             const found = extractDeepEmail(val, depth + 1, visited);
             if (found) return found;
           }
         }
-        
         return undefined;
       };
       const res = await api.get(`/organization_users/${orgId}`).catch((e) => {
@@ -458,28 +198,9 @@ export default function OrganizationPage() {
         return { data: [] } as any;
       });
       const raw = Array.isArray(res.data) ? res.data : res.data?.data ?? [];
-      console.log("[Debug] Raw members data full:", JSON.stringify(raw, null, 2));
-      console.log("[Debug] Raw members data:", raw);
-      
-      // Dodajmy jeszcze bardziej szczegółowe logowanie struktury
-      raw.forEach((item: any, index: number) => {
-        console.log(`[Debug] Member ${index}:`, JSON.stringify(item, null, 2));
-      });
-      
-      // Przeanalizujmy zalogowanego użytkownika, aby lepiej zrozumieć strukturę danych
-      const authUser = JSON.parse(localStorage.getItem("user_data") || "{}");
-      console.log("[Debug] Current auth user data:", authUser);
-      console.log("[Debug] Current auth user email:", authUser.email);
-      
-      // Spróbujmy użyć danych uwierzytelnienia do znalezienia emaili
-      const authUserId = String(authUser.id || "");
-      const authUserEmail = String(authUser.email || "");
-      
       const mapped = (raw as any[]).map((m) => {
         const user_id = String(m.user_id ?? m.id ?? m.userId ?? "");
-        console.log(`[Debug] Processing member with ID ${user_id}, raw data:`, m);
-        
-        // Sprawdź czy mamy jakieś bezpośrednie źródło emaila w danych
+        // Heurystyka szukania emaila w różnych polach które backend może zwrócić
         const emailCandidate =
           m.email ||
           m.user_email ||
@@ -489,98 +210,120 @@ export default function OrganizationPage() {
           m.owner_email ||
           (m.user && (m.user.email || m.user.user_email)) ||
           null;
-        
-        // Sprawdźmy każde pole zagnieżdżone, które może zawierać email
-        const findEmailInObject = (obj: any): string | null => {
-          if (!obj || typeof obj !== 'object') return null;
-          
-          // Sprawdź bezpośrednie pola
-          for (const [key, value] of Object.entries(obj)) {
-            if (
-              typeof value === 'string' && 
-              key.toLowerCase().includes('email') && 
-              value.includes('@')
-            ) {
-              console.log(`[Debug] Found email in field ${key}:`, value);
-              return value;
-            }
-          }
-          
-          // Sprawdź pola user, profile, etc.
-          for (const field of ['user', 'profile', 'member', 'owner']) {
-            if (obj[field] && typeof obj[field] === 'object') {
-              for (const [key, value] of Object.entries(obj[field])) {
-                if (
-                  typeof value === 'string' && 
-                  key.toLowerCase().includes('email') && 
-                  value.includes('@')
-                ) {
-                  console.log(`[Debug] Found email in ${field}.${key}:`, value);
-                  return value;
-                }
-              }
-            }
-          }
-          
-          // Ostatnia szansa - wszystkie stringi z @
-          for (const value of Object.values(obj)) {
-            if (typeof value === 'string' && value.includes('@') && value.includes('.')) {
-              console.log(`[Debug] Found potential email in value:`, value);
-              return value;
-            }
-          }
-          
-          return null;
-        };
-        
-        const deepEmailSearch = findEmailInObject(m);
-        const emailFinal = emailCandidate || deepEmailSearch || undefined;
-        
-        // Jeśli znaleźliśmy email, zaktualizujmy cache
-        if (emailFinal) {
-          const newEmails: Record<string, string> = {};
-          newEmails[user_id] = emailFinal;
-          setUserEmails(prev => ({...prev, ...newEmails}));
-          updateEmailCache(newEmails);
-        }
-        
         const usernameCandidate =
-          m.username || 
-          m.user_name || 
-          (m.user && m.user.username) || 
-          m.first_name || 
-          m.firstName || 
-          (m.name ? String(m.name) : undefined);
-        
+          m.username || m.user_name || (m.user && m.user.username) || null;
+
+        let emailFinal: string | undefined = emailCandidate
+          ? String(emailCandidate)
+          : undefined;
+        // Dodatkowa heurystyka: przeszukaj płytko wszystkie wartości string zawierające '@'
+        if (!emailFinal) {
+          emailFinal = extractDeepEmail(m);
+        }
+        // Log debug (raz na członka bez emaila) – można później usunąć
+        if (!emailFinal) {
+          // eslint-disable-next-line no-console
+          console.debug("[Org Members] Brak emaila w rekordzie:", m);
+        }
         return {
           user_id,
           email: emailFinal,
+          // zachowaj username gdyby email nie był dostępny
           username: usernameCandidate ? String(usernameCandidate) : undefined,
           role: m.role || m.user_role || m.membership_role || m.type,
         };
       });
-      console.log("[Debug] Mapped members:", mapped);
       setMembers(mapped);
 
-      // Create placeholder loading states for any members without emails
-      const loadingPlaceholders: Record<string, string> = {};
-      const userIds = mapped.map(m => m.user_id);
-      
-      userIds.forEach(id => {
-        // Only create placeholders for IDs that don't have emails in the current state
-        // and don't already have placeholders
-        if (!userEmails[id] || (userEmails[id].startsWith('[ID:') && !mapped.find(m => m.user_id === id && m.email))) {
-          loadingPlaceholders[id] = `[ID: ${id}]`;
+      // Uzupełnianie brakujących emaili – najpierw spróbujemy masowo przez /users/ (jeśli dostępne)
+      const missingIds = mapped.filter((m) => !m.email).map((m) => m.user_id);
+      if (missingIds.length) {
+        let userDirectory: Record<string, any> | null = null;
+        try {
+          // Replace bulk /users/ fetch to suppress interceptor errors
+          let listRes;
+          try {
+            listRes = await api.get(`/users/`, { validateStatus: () => true });
+          } catch (e) {
+            console.warn("/users/ list fetch network error", e);
+            listRes = null;
+          }
+          if (listRes?.status === 200 && listRes.data) {
+            const listData = Array.isArray(listRes.data?.data)
+              ? listRes.data.data
+              : Array.isArray(listRes.data)
+              ? listRes.data
+              : [];
+            userDirectory = {};
+            for (const u of listData) {
+              const uid = String(u.id ?? u.user_id ?? "");
+              if (uid) userDirectory[uid] = u;
+            }
+          }
+        } catch {}
+
+        let updated = mapped.slice();
+        if (userDirectory) {
+          let changed = false;
+          updated = updated.map((m) => {
+            if (!m.email && userDirectory![m.user_id]) {
+              const u = userDirectory![m.user_id];
+              const foundEmail =
+                u.email ||
+                u.user_email ||
+                u.email_address ||
+                (u.profile && (u.profile.email || u.profile.user_email));
+              if (foundEmail) {
+                changed = true;
+                return { ...m, email: String(foundEmail) };
+              }
+            }
+            return m;
+          });
+          if (changed) setMembers(updated);
         }
-      });
-      
-      if (Object.keys(loadingPlaceholders).length > 0) {
-        setUserEmails(prev => ({...prev, ...loadingPlaceholders}));
+
+        // Drugi krok: indywidualne pobrania tylko dla nadal brakujących (limit do 15 aby nie spamować)
+        const stillMissing = updated.filter((m) => !m.email).slice(0, 15);
+        if (stillMissing.length) {
+          await Promise.all(
+            stillMissing.map(async (m) => {
+              let uRes;
+              try {
+                uRes = await api.get(
+                  `/users/${m.user_id}`,
+                  { validateStatus: () => true }
+                );
+              } catch (e) {
+                console.warn(`Network error fetching user ${m.user_id}`, e);
+                return;
+              }
+              if (uRes?.status === 200 && uRes.data) {
+                const env = uRes.data;
+                const u = env?.data ?? env;
+                const foundEmail =
+                  u.email ||
+                  u.user_email ||
+                  u.email_address ||
+                  (u.profile && (u.profile.email || u.profile.user_email));
+                if (foundEmail) {
+                  setMembers((prev) =>
+                    prev.map((pm) =>
+                      pm.user_id === m.user_id
+                        ? { ...pm, email: String(foundEmail) }
+                        : pm
+                    )
+                  );
+                }
+              } else {
+                console.debug(
+                  `User ${m.user_id} fetch returned status ${uRes?.status}`
+                );
+              }
+            })
+          );
+        }
       }
-      
-      // Fetch user details using our improved function
-      fetchUserDetails(userIds);
-      
       // Determine if current user is owner
       const token = localStorage.getItem("auth_token");
       let currentId: string | undefined;
@@ -1649,7 +1392,6 @@ export default function OrganizationPage() {
               onRemoveMember={handleRemoveMember}
               onRefreshMembers={loadMembers}
               loading={membersLoading}
-              userEmails={userEmails}
             />
           </Toolbar>
         </AppBar>
